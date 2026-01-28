@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PassKey Overlay</title>
+  <link rel="stylesheet" href="overlay.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="site" class="site"></div>
+    <div class="row">
+      <span class="label">User:</span>
+      <span id="username" class="value clickable"></span>
+    </div>
+    <div class="row">
+      <span class="label">Pass:</span>
+      <span id="password" class="value clickable masked" data-real="">••••••••</span>
+    </div>
+    <small>Click to copy • Esc to close</small>
+  </div>
+
+  <script>
+    // No imports needed, we use window.api exposed by preload
+    
+    window.api.onShowCredentials((data) => {
+      document.getElementById('site').textContent = data.site || 'Unknown site'
+      const userEl = document.getElementById('username');
+      const passEl = document.getElementById('password');
+
+      if (!data.username) {
+        // No credentials found
+        userEl.textContent = 'No details found';
+        userEl.classList.remove('clickable');
+        userEl.onclick = null;
+        
+        passEl.textContent = '---';
+        passEl.classList.remove('clickable', 'masked');
+        passEl.onclick = null;
+        return;
+      }
+
+      // Credentials found
+      userEl.textContent = data.username;
+      userEl.classList.add('clickable');
+      
+      passEl.textContent = '••••••••';
+      passEl.classList.add('clickable', 'masked');
+      passEl.dataset.real = data.password || '';
+
+      // Copy username
+      userEl.onclick = () => {
+        window.api.copyToClipboard(data.username)
+        window.api.hideOverlay()
+      }
+
+      // Reveal & copy password
+      passEl.onclick = () => {
+        passEl.textContent = passEl.dataset.real
+        window.api.copyToClipboard(passEl.dataset.real)
+        setTimeout(() => window.api.hideOverlay(), 1200)
+      }
+    })
+
+    // Close on Esc
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.api.hideOverlay()
+      }
+    })
+  </script>
+</body>
+</html>
