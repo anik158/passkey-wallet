@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PassKey Wallet Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #ffffff;
+            --accent-color: #646cff;
+            --secondary-bg: #2a2a2a;
+            --border-color: #444;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        button.primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--secondary-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #333;
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background-color: #383838;
+        }
+
+        .masked-pass {
+            font-family: monospace;
+            letter-spacing: 2px;
+        }
+
+        .action-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--secondary-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            width: 400px;
+            border: 1px solid var(--border-color);
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        input {
+            padding: 8px;
+            background: #111;
+            border: 1px solid var(--border-color);
+            color: white;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>PassKey Wallet Manager</h1>
+
+        <div class="actions">
+            <button class="primary" id="btnAdd">+ Add Password</button>
+            <button id="btnImport">Import Excel</button>
+            <button id="btnExport">Export Excel</button>
+            <span style="flex-grow:1"></span>
+            <button id="btnBackup" style="border-color: #646cff; color: #646cff;">Backup (.qpass)</button>
+            <button id="btnRestore" style="border-color: #646cff; color: #646cff;">Restore (.qpass)</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Username</th>
+                    <th>Password</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Rows will be injected here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Add Credential</h2>
+            <form id="credForm">
+                <input type="hidden" id="editId">
+
+                <label>Domain (e.g., github.com)</label>
+                <input type="text" id="inpDomain" required placeholder="github.com">
+
+                <label>Username</label>
+                <input type="text" id="inpUser" required placeholder="me@email.com">
+
+                <label>Password</label>
+                <input type="password" id="inpPass" required placeholder="Secret123!">
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1rem;">
+                    <button type="button" id="btnCancel">Cancel</button>
+                    <button type="submit" class="primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        console.log('Dashboard script loaded!');
+
+        // Helper to secure the view against XSS (basic)
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        const tableBody = document.getElementById('tableBody');
+        const modal = document.getElementById('modal');
+        const form = document.getElementById('credForm');
+
+        // State
+        let isEditing = false;
+
+        // Initialize
+        async function loadCredentials() {
+            try {
+                console.log('Fetching credentials...');
+                const creds = await window.api.getAllCredentials();
+                console.log('Credentials:', creds);
+                renderTable(creds);
+            } catch (err) {
+                console.error('Failed to load credentials:', err);
+            }
+        }
+
+        function renderTable(creds) {
+            tableBody.innerHTML = '';
+
+            if (creds.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">No passwords saved yet.</td></tr>';
+                return;
+            }
+
+            creds.forEach(cred => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td>${escapeHtml(cred.domain)}</td>
+                <td>${escapeHtml(cred.username)}</td>
+                <td class="masked-pass" title="Hover to reveal">••••••••</td>
+                <td class="action-cell">
+                    <button class="btn-copy" data-pass="${escapeHtml(cred.password)}">Copy</button>
+                    <button class="btn-delete" data-id="${cred.id}" style="color:#ff6b6b; border-color:#ff6b6b">Delete</button>
+                </td>
+            `;
+
+                // Setup listeners for this row
+                const copyBtn = tr.querySelector('.btn-copy');
+                copyBtn.onclick = () => window.api.copyToClipboard(copyBtn.dataset.pass);
+
+                const delBtn = tr.querySelector('.btn-delete');
+                delBtn.onclick = async () => {
+                    if (confirm(`Delete password for ${cred.domain}?`)) {
+                        await window.api.deleteCredential(cred.id);
+                        loadCredentials();
+                    }
+                };
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Event Listeners
+        // Check if element exists before attaching to avoid errors if ID changed
+        const btnRefresh = document.getElementById('btnRefresh');
+        if (btnRefresh) btnRefresh.onclick = loadCredentials;
+
+        document.getElementById('btnAdd').onclick = () => {
+            console.log('Add clicked');
+            isEditing = false;
+            document.getElementById('modalTitle').textContent = 'Add Credential';
+            form.reset();
+            document.getElementById('editId').value = '';
+            modal.classList.add('active');
+        };
+
+        document.getElementById('btnCancel').onclick = () => {
+            modal.classList.remove('active');
+        };
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            console.log('Submitting form');
+
+            const data = {
+                domain: document.getElementById('inpDomain').value,
+                username: document.getElementById('inpUser').value,
+                password: document.getElementById('inpPass').value
+            };
+
+            await window.api.addCredential(data);
+            console.log('Saved');
+
+            modal.classList.remove('active');
+            loadCredentials();
+        };
+
+        document.getElementById('btnImport').onclick = async () => {
+            const res = await window.api.importFromExcel();
+            if (res.success) {
+                alert(`Imported ${res.count} passwords!`);
+                loadCredentials();
+            } else if (!res.cancelled) {
+                alert('Import failed: ' + res.message);
+            }
+        };
+
+        document.getElementById('btnExport').onclick = async () => {
+            const res = await window.api.exportToExcel();
+            if (res.success) {
+                alert('Export successful!');
+            } else if (!res.cancelled) {
+                alert('Export failed: ' + res.message);
+            }
+        };
+
+        document.getElementById('btnBackup').onclick = async () => {
+            const password = prompt('Set a password for this backup file:');
+            if (!password) return;
+
+            const res = await window.api.exportEncrypted(password);
+            if (res.success) alert('Backup saved successfully!');
+            else if (!res.cancelled) alert('Backup failed: ' + res.message);
+        };
+
+        document.getElementById('btnRestore').onclick = async () => {
+            const password = prompt('Enter the password for the backup file:');
+            if (!password) return;
+
+            if (!confirm('This will import passwords from the backup. Continue?')) return;
+
+            const res = await window.api.importEncrypted(password);
+            if (res.success) {
+                alert(`Restored ${res.count} passwords!`);
+                loadCredentials();
+            } else if (!res.cancelled) {
+                alert('Restore failed: ' + res.message);
+            }
+        };
+
+        // Start
+        loadCredentials();
+    </script>
+</body>
+
+</html>
