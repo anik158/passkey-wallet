@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import electron from 'vite-plugin-electron/simple';
+import path from 'path';
 
 export default defineConfig({
   plugins: [
@@ -27,4 +28,13 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      input: {
+        dashboard: path.resolve(__dirname, 'src/render/dashboard.html'),
+        overlay: path.resolve(__dirname, 'src/render/overlay.html'),
+        login: path.resolve(__dirname, 'src/render/login.html'),
+      }
+    }
+  }
 });

@@ -4,6 +4,32 @@ import fs from 'fs';
 
 let db;
 
+// Helper to normalize domains
+function normalizeDomain(input) {
+  if (!input) return '';
+  let domain = input.toLowerCase().trim();
+
+  // Remove protocol
+  domain = domain.replace(/^https?:\/\//, '');
+
+  // Remove user/pass if present (basic)
+  // e.g. https://user:pass@example.com -> example.com
+  if (domain.includes('@')) {
+    domain = domain.split('@')[1];
+  }
+
+  // Remove www.
+  domain = domain.replace(/^www\./, '');
+
+  // Remove trailing paths
+  // example.com/login -> example.com
+  if (domain.includes('/')) {
+    domain = domain.split('/')[0];
+  }
+
+  return domain;
+}
+
 export function initDatabase(userDataPath, password) {
   const dbDir = path.join(userDataPath, 'passkey-wallet');
   if (!fs.existsSync(dbDir)) {
@@ -12,7 +38,7 @@ export function initDatabase(userDataPath, password) {
 
   const dbPath = path.join(dbDir, 'passwords.db');
 
-  db = new Database(dbPath, { verbose: console.log });
+  db = new Database(dbPath);
 
   // Set encryption key
   db.pragma(`key = '${password}'`);
@@ -32,49 +58,91 @@ export function initDatabase(userDataPath, password) {
   console.log('Database initialized at', dbPath);
 }
 
+// Common login redirects
+const DOMAIN_ALIASES = {
+  'login.microsoftonline.com': ['outlook.com', 'live.com', 'microsoft.com', 'office.com'],
+  'accounts.google.com': ['google.com', 'gmail.com', 'youtube.com'],
+  'amazon.com': ['aws.amazon.com', 'smile.amazon.com'],
+  'github.com': ['github.io']
+};
+
 export function getCredentials(query) {
   if (!db) throw new Error('DB not initialized');
   const allCreds = db.prepare('SELECT * FROM credentials').all();
 
   if (!query) return [];
+
   const lowerQuery = query.toLowerCase();
 
-  // Fuzzy match logic - IN JS because SQL LIKE is too limited for "GitHub" vs "github.com"
+  // Expand query with aliases
+  // If query is 'login.microsoftonline.com', we also want to match 'outlook.com', etc.
+  const aliases = DOMAIN_ALIASES[lowerQuery] || [];
+
+  // Check if query implies a broader reverse alias (simple check)
+  // e.g. if query is 'outlook.com', we might not need to look for microsoftonline, 
+  // but usually it's the Login Page (query) -> Saved Cred (target).
+
+  const targets = [lowerQuery, ...aliases];
+
+  // Fuzzy match logic
   return allCreds.filter(cred => {
     const domain = cred.domain.toLowerCase();
-    // 1. Exact match
-    if (domain === lowerQuery) return true;
-    // 2. Domain contains query (stored: github.com, query: github)
-    if (domain.includes(lowerQuery)) return true;
-    // 3. Query contains domain (stored: github.com, query: https://github.com/foo)
-    if (lowerQuery.includes(domain)) return true;
 
-    // 4. Smart Title Match (stored: github.com, query: "GitHub: Let's build...")
-    // Check if the "base" of the domain is in the query title
-    const domainBase = domain.split('.')[0]; // github
-    // Avoid short matches like "co" from "co.uk" or "a" from "a.com"
-    if (domainBase.length > 2 && lowerQuery.includes(domainBase)) {
-      return true;
-    }
+    // Check against all possible targets (query + aliases)
+    return targets.some(target => {
+      // 1. Exact match
+      if (domain === target) return true;
+      // 2. Domain contains target
+      if (domain.includes(target)) return true;
+      // 3. Target contains domain
+      if (target.includes(domain)) return true;
 
-    return false;
+      // 4. Smart Title Match / Base Match
+      const domainBase = domain.split('.')[0];
+      if (domainBase.length > 2 && target.includes(domainBase)) {
+        return true;
+      }
+
+      // 5. Token Match (e.g. "Google Account" -> "google.com")
+      const tokens = target.split(/[\s\-_]+/);
+      for (const token of tokens) {
+        if (token.length > 3 && domain.includes(token)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
   }).sort((a, b) => {
     // Prioritize exact/better matches
-    if (a.domain === lowerQuery) return -1;
-    if (lowerQuery.includes(a.domain)) return -1;
+    if (targets.includes(a.domain)) return -1;
     return 0;
   });
 }
 
 export function addCredential(domain, username, password) {
   if (!db) throw new Error('DB not initialized');
+  const cleanDomain = normalizeDomain(domain);
   const stmt = db.prepare('INSERT INTO credentials (domain, username, password) VALUES (?, ?, ?)');
-  return stmt.run(domain, username, password);
+  return stmt.run(cleanDomain, username, password);
 }
 
 export function getAllCredentials() {
   if (!db) throw new Error('DB not initialized');
   return db.prepare('SELECT * FROM credentials ORDER BY domain ASC').all();
+}
+
+export function getCredentialsPage(page = 1, pageSize = 50) {
+  if (!db) throw new Error('DB not initialized');
+  const offset = (page - 1) * pageSize;
+
+  const data = db.prepare('SELECT * FROM credentials ORDER BY domain ASC LIMIT ? OFFSET ?').all(pageSize, offset);
+  const countResult = db.prepare('SELECT COUNT(*) as count FROM credentials').get();
+
+  return {
+    data,
+    total: countResult.count
+  };
 }
 
 export function deleteCredential(id) {
@@ -83,6 +151,10 @@ export function deleteCredential(id) {
 }
 
 export function updateCredential(id, username, password) {
+  // We aren't updating domain currently in UI, but if we did, we'd normalize it too.
+  // The current UI sends { id, domain, username, password } but domain is disabled.
+  // If we enable domain edit later, we should handle it.
+  // For now the SQL only updates username/password.
   if (!db) throw new Error('DB not initialized');
   return db.prepare('UPDATE credentials SET username = ?, password = ? WHERE id = ?').run(username, password, id);
 }
@@ -91,7 +163,10 @@ export function bulkInsertCredentials(rows) {
   if (!db) throw new Error('DB not initialized');
   const insert = db.prepare('INSERT INTO credentials (domain, username, password) VALUES (@domain, @username, @password)');
   const insertMany = db.transaction((credentials) => {
-    for (const cred of credentials) insert.run(cred);
+    for (const cred of credentials) {
+      cred.domain = normalizeDomain(cred.domain);
+      insert.run(cred);
+    }
   });
   insertMany(rows);
 }

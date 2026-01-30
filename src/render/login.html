@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passkey Wallet Login</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+
+<body>
+    <div class="login-container">
+        <img src="/passkey_wallet.svg" alt="Logo" class="logo">
+        <h2>Passkey Wallet</h2>
+        <p>Enter Master Password to unlock</p>
+
+        <div class="input-group">
+            <input type="password" id="master-password" placeholder="Master Password" autofocus>
+            <button id="toggle-password" tabindex="-1">👁️</button>
+        </div>
+
+        <button id="login-btn">Unlock Vault</button>
+        <p id="error-msg" class="error hidden"></p>
+    </div>
+
+    <script type="module" src="login.js"></script>
+</body>
+
+</html>

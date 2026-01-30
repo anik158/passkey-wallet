@@ -16,6 +16,8 @@
     "vite-plugin-electron": "^0.28.8",
     "vite-plugin-electron-renderer": "^0.14.6"
   },
+  "description": "A secure, local-first password manager",
+  "author": "Ahsan",
   "main": "dist-electron/index.js",
   "dependencies": {
     "active-win": "^8.2.1",
@@ -23,5 +25,29 @@
     "better-sqlite3-multiple-ciphers": "^12.6.2",
     "electron-store": "^11.0.2",
     "xlsx": "^0.18.5"
+  },
+  "build": {
+    "appId": "com.passkey.wallet",
+    "productName": "PassKey Wallet",
+    "directories": {
+      "output": "dist_app"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist/**/*",
+      "package.json",
+      "public/**/*"
+    ],
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility",
+      "icon": "public/passkey_wallet.svg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
   }
 }

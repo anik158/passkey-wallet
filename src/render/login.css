@@ -1,0 +1,163 @@
+:root {
+  --bg-color: #0f1014;
+  --card-bg: #1e1e24;
+  --input-bg: #2b2c34;
+  --text-main: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --error-color: #ef4444;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  -webkit-app-region: drag;
+  overflow: hidden;
+  /* Prevent scrollbars */
+}
+
+/* Background Effect (Subtle Gradient) */
+body::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, #6366f120 0%, transparent 40%);
+  z-index: -1;
+  animation: pulse 10s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+
+.login-container {
+  background: rgba(30, 30, 36, 0.7);
+  backdrop-filter: blur(12px);
+  padding: 2.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  width: 300px;
+  text-align: center;
+  -webkit-app-region: no-drag;
+}
+
+.logo {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  margin: 0 0 0.5rem 0;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+p {
+  margin: 0 0 2rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+input {
+  width: 100%;
+  padding: 12px 40px 12px 14px;
+  /* Space for eye icon */
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: white;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus {
+  border-color: #888;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+#toggle-password {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+#toggle-password:hover {
+  color: white;
+}
+
+button#login-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--text-main);
+  /* White button */
+  color: var(--bg-color);
+  /* Dark text */
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+button#login-btn:hover {
+  background: #e0e0e0;
+}
+
+button#login-btn:active {
+  transform: scale(0.98);
+}
+
+.error {
+  color: var(--error-color);
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+  /* Prevent jump */
+}
+
+.hidden {
+  visibility: hidden;
+  opacity: 0;
+}
