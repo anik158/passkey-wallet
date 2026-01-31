@@ -159,13 +159,46 @@ export function updateCredential(id, username, password) {
   return db.prepare('UPDATE credentials SET username = ?, password = ? WHERE id = ?').run(username, password, id);
 }
 
+export function findCredential(domain, username) {
+  if (!db) throw new Error('DB not initialized');
+  const clean = normalizeDomain(domain);
+  return db.prepare('SELECT * FROM credentials WHERE domain = ? AND username = ?').get(clean, username);
+}
+
+export function checkDuplicates(rows) {
+  if (!db) throw new Error('DB not initialized');
+  const checkStmt = db.prepare('SELECT domain FROM credentials WHERE domain = ? AND username = ?');
+  const duplicates = [];
+
+  for (const row of rows) {
+    const cleanDomain = normalizeDomain(row.domain);
+    const exists = checkStmt.get(cleanDomain, row.username);
+    if (exists) {
+      duplicates.push(`${cleanDomain} (${row.username})`);
+    }
+  }
+  return duplicates;
+}
+
 export function bulkInsertCredentials(rows) {
   if (!db) throw new Error('DB not initialized');
-  const insert = db.prepare('INSERT INTO credentials (domain, username, password) VALUES (@domain, @username, @password)');
+
+  const checkStmt = db.prepare('SELECT id FROM credentials WHERE domain = ? AND username = ?');
+  const updateStmt = db.prepare('UPDATE credentials SET password = ? WHERE id = ?');
+  const insertStmt = db.prepare('INSERT INTO credentials (domain, username, password) VALUES (?, ?, ?)');
+
   const insertMany = db.transaction((credentials) => {
     for (const cred of credentials) {
-      cred.domain = normalizeDomain(cred.domain);
-      insert.run(cred);
+      const cleanDomain = normalizeDomain(cred.domain);
+      const existing = checkStmt.get(cleanDomain, cred.username);
+
+      if (existing) {
+        // Update existing entry (Upsert behavior) ensures we don't get duplicates
+        // and that we update passwords if they changed in the imported file.
+        updateStmt.run(cred.password, existing.id);
+      } else {
+        insertStmt.run(cleanDomain, cred.username, cred.password);
+      }
     }
   });
   insertMany(rows);

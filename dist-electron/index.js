@@ -1,4 +1,4 @@
-import { Menu, ipcMain, app, globalShortcut, clipboard, dialog, BrowserWindow, powerMonitor } from "electron";
+import { Menu, app, ipcMain, globalShortcut, clipboard, dialog, BrowserWindow, powerMonitor } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import activeWin from "active-win";
@@ -104,13 +104,38 @@ function updateCredential(id, username, password) {
   if (!db) throw new Error("DB not initialized");
   return db.prepare("UPDATE credentials SET username = ?, password = ? WHERE id = ?").run(username, password, id);
 }
+function findCredential(domain, username) {
+  if (!db) throw new Error("DB not initialized");
+  const clean = normalizeDomain(domain);
+  return db.prepare("SELECT * FROM credentials WHERE domain = ? AND username = ?").get(clean, username);
+}
+function checkDuplicates(rows) {
+  if (!db) throw new Error("DB not initialized");
+  const checkStmt = db.prepare("SELECT domain FROM credentials WHERE domain = ? AND username = ?");
+  const duplicates = [];
+  for (const row of rows) {
+    const cleanDomain = normalizeDomain(row.domain);
+    const exists = checkStmt.get(cleanDomain, row.username);
+    if (exists) {
+      duplicates.push(`${cleanDomain} (${row.username})`);
+    }
+  }
+  return duplicates;
+}
 function bulkInsertCredentials(rows) {
   if (!db) throw new Error("DB not initialized");
-  const insert = db.prepare("INSERT INTO credentials (domain, username, password) VALUES (@domain, @username, @password)");
+  const checkStmt = db.prepare("SELECT id FROM credentials WHERE domain = ? AND username = ?");
+  const updateStmt = db.prepare("UPDATE credentials SET password = ? WHERE id = ?");
+  const insertStmt = db.prepare("INSERT INTO credentials (domain, username, password) VALUES (?, ?, ?)");
   const insertMany = db.transaction((credentials) => {
     for (const cred of credentials) {
-      cred.domain = normalizeDomain(cred.domain);
-      insert.run(cred);
+      const cleanDomain = normalizeDomain(cred.domain);
+      const existing = checkStmt.get(cleanDomain, cred.username);
+      if (existing) {
+        updateStmt.run(cred.password, existing.id);
+      } else {
+        insertStmt.run(cleanDomain, cred.username, cred.password);
+      }
     }
   });
   insertMany(rows);
@@ -26189,6 +26214,25 @@ const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$1 = path.dirname(__filename$1);
 Menu.setApplicationMenu(null);
 const PRELOAD_PATH = path.join(__dirname$1, "preload.mjs");
+if (process.platform === "linux") {
+  app.disableHardwareAcceleration();
+}
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  console.log("Another instance is already running. Exiting...");
+  app.quit();
+} else {
+  app.on("second-instance", (event, commandLine, workingDirectory) => {
+    console.log("Second instance attempted, focusing existing window");
+    if (dashboardWindow) {
+      if (dashboardWindow.isMinimized()) dashboardWindow.restore();
+      dashboardWindow.focus();
+    } else if (loginWindow) {
+      if (loginWindow.isMinimized()) loginWindow.restore();
+      loginWindow.focus();
+    }
+  });
+}
 let overlayWindow = null;
 let dashboardWindow = null;
 let loginWindow = null;
@@ -26276,6 +26320,7 @@ function createDashboardWindow() {
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
     dashboardWindow.loadURL(path.join(devServerUrl, "src/render/dashboard.html"));
+    dashboardWindow.webContents.openDevTools();
   } else {
     dashboardWindow.loadFile(path.join(__dirname$1, "../render/dashboard.html"));
   }
@@ -26416,18 +26461,47 @@ ipcMain.on("copy-to-clipboard", (event, text) => clipboard.writeText(text));
 ipcMain.on("hide-overlay", () => overlayWindow == null ? void 0 : overlayWindow.hide());
 ipcMain.handle("get-all-credentials", () => getAllCredentials());
 ipcMain.handle("get-credentials-page", (event, { page, pageSize }) => getCredentialsPage(page, pageSize));
-ipcMain.handle("add-credential", (event, data) => addCredential(data.domain, data.username, data.password));
+ipcMain.handle("add-credential", async (event, data) => {
+  const existing = findCredential(data.domain, data.username);
+  if (existing) {
+    const { response } = await dialog.showMessageBox({
+      type: "question",
+      buttons: ["Overwrite", "Cancel"],
+      defaultId: 0,
+      title: "Duplicate Credential",
+      message: `A password for ${data.domain} (${data.username}) already exists.
+Do you want to overwrite it?`,
+      detail: "The existing password will be updated."
+    });
+    if (response === 1) return { cancelled: true };
+    return updateCredential(existing.id, data.username, data.password);
+  }
+  return addCredential(data.domain, data.username, data.password);
+});
 ipcMain.handle("delete-credential", (event, id) => deleteCredential(id));
 ipcMain.handle("update-credential", (event, data) => updateCredential(data.id, data.username, data.password));
 ipcMain.handle("import-from-excel", async () => {
   const { filePaths } = await dialog.showOpenDialog({
     properties: ["openFile"],
-    filters: [{ name: "Excel Files", extensions: ["xlsx", "xls", "csv"] }]
+    filters: [
+      { name: "Excel Files", extensions: ["xlsx", "xls"] },
+      { name: "CSV Files", extensions: ["csv"] }
+    ]
   });
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    console.log("[FOCUS] Restoring focus after import dialog");
+    dashboardWindow.restore();
+    dashboardWindow.setAlwaysOnTop(true);
+    dashboardWindow.show();
+    dashboardWindow.focus();
+    dashboardWindow.setAlwaysOnTop(false);
+    console.log("[FOCUS] Focus restored, window should be active");
+  }
   if (filePaths && filePaths.length > 0) {
+    const filePath = filePaths[0];
     try {
-      const fileBuffer = fs.readFileSync(filePaths[0]);
-      const workbook = readSync(fileBuffer, { type: "buffer" });
+      const buffer = fs.readFileSync(filePath);
+      const workbook = readSync(buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       const rawData = utils.sheet_to_json(sheet);
@@ -26459,6 +26533,23 @@ ipcMain.handle("import-from-excel", async () => {
         }
       }
       if (validRows.length > 0) {
+        const duplicates = checkDuplicates(validRows);
+        if (duplicates.length > 0) {
+          const message = `Found ${duplicates.length} duplicate entries (e.g., ${duplicates[0]}).
+
+Do you want to overwrite them with the new passwords?`;
+          const { response } = await dialog.showMessageBox({
+            type: "question",
+            buttons: ["Overwrite & Import", "Cancel"],
+            defaultId: 0,
+            title: "Duplicates Found",
+            message,
+            detail: "Existing passwords for these accounts will be updated."
+          });
+          if (response === 1) {
+            return { success: false, message: "Import cancelled by user." };
+          }
+        }
         bulkInsertCredentials(validRows);
         if (dashboardWindow) {
         }
@@ -26477,6 +26568,15 @@ ipcMain.handle("export-encrypted", async (event, password) => {
     defaultPath: "backup.qpass",
     filters: [{ name: "PassKey Wallet Backup", extensions: ["qpass"] }]
   });
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    console.log("[FOCUS] Restoring focus after backup dialog");
+    dashboardWindow.restore();
+    dashboardWindow.setAlwaysOnTop(true);
+    dashboardWindow.show();
+    dashboardWindow.focus();
+    dashboardWindow.setAlwaysOnTop(false);
+    console.log("[FOCUS] Focus restored");
+  }
   if (filePath) {
     try {
       const data = getAllCredentials();
@@ -26495,6 +26595,15 @@ ipcMain.handle("select-backup-file", async () => {
     properties: ["openFile"],
     filters: [{ name: "PassKey Wallet Backup", extensions: ["qpass"] }]
   });
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    console.log("[FOCUS] Restoring focus after restore file dialog");
+    dashboardWindow.restore();
+    dashboardWindow.setAlwaysOnTop(true);
+    dashboardWindow.show();
+    dashboardWindow.focus();
+    dashboardWindow.setAlwaysOnTop(false);
+    console.log("[FOCUS] Focus restored");
+  }
   return filePaths && filePaths.length > 0 ? filePaths[0] : null;
 });
 ipcMain.handle("restore-backup", async (event, { filePath, password }) => {
@@ -26505,9 +26614,27 @@ ipcMain.handle("restore-backup", async (event, { filePath, password }) => {
     const content = fs.readFileSync(filePath, "utf8");
     const decryptedData = decryptData(content, password);
     if (Array.isArray(decryptedData)) {
+      const duplicates = checkDuplicates(decryptedData);
+      if (duplicates.length > 0) {
+        const message = `Found ${duplicates.length} duplicate entries in backup (e.g., ${duplicates[0]}).
+
+Do you want to overwrite existing passwords?`;
+        const { response } = await dialog.showMessageBox({
+          type: "question",
+          buttons: ["Overwrite & Restore", "Cancel"],
+          defaultId: 0,
+          title: "Backup Duplicates",
+          message,
+          detail: "Existing passwords will be updated to match the backup."
+        });
+        if (response === 1) {
+          return { success: false, message: "Restore cancelled by user." };
+        }
+      }
       bulkInsertCredentials(decryptedData);
       if (dashboardWindow) {
-        dashboardWindow.webContents.reload();
+        dashboardWindow.webContents.send("refresh-data");
+        dashboardWindow.focus();
       } else {
         createDashboardWindow();
       }

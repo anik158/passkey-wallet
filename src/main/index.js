@@ -2,7 +2,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, clipboard, dialog, Menu, p
 import path from 'path'
 import { fileURLToPath } from 'url'
 import activeWin from 'active-win'
-import { initDatabase, getCredentials, addCredential, getAllCredentials, deleteCredential, updateCredential, bulkInsertCredentials, getCredentialsPage, closeDatabase } from './db.js'
+import { initDatabase, getCredentials, addCredential, getAllCredentials, deleteCredential, updateCredential, bulkInsertCredentials, getCredentialsPage, closeDatabase, checkDuplicates, findCredential } from './db.js'
 import * as xlsx from 'xlsx'
 import { encryptData, decryptData } from './crypto.js'
 import fs from 'fs'
@@ -18,6 +18,31 @@ Menu.setApplicationMenu(null);
 
 // Preload is in the same dist folder
 const PRELOAD_PATH = path.join(__dirname, 'preload.mjs')
+
+// Linux GPU Acceleration Fix for File Dialogs
+if (process.platform === 'linux') {
+  app.disableHardwareAcceleration();
+}
+
+// Single Instance Lock - Prevent multiple instances
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  console.log('Another instance is already running. Exiting...');
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, focus our window
+    console.log('Second instance attempted, focusing existing window');
+    if (dashboardWindow) {
+      if (dashboardWindow.isMinimized()) dashboardWindow.restore();
+      dashboardWindow.focus();
+    } else if (loginWindow) {
+      if (loginWindow.isMinimized()) loginWindow.restore();
+      loginWindow.focus();
+    }
+  });
+}
 
 let overlayWindow = null
 let dashboardWindow = null
@@ -138,7 +163,7 @@ function createDashboardWindow() {
   if (devServerUrl) {
     // In dev mode, we assume Vite serves this file
     dashboardWindow.loadURL(path.join(devServerUrl, 'src/render/dashboard.html'))
-    // dashboardWindow.webContents.openDevTools() // Disabled auto-open
+    dashboardWindow.webContents.openDevTools() // Debug mode ENABLED
   } else {
     dashboardWindow.loadFile(path.join(__dirname, '../render/dashboard.html'))
   }
@@ -327,25 +352,56 @@ ipcMain.on('hide-overlay', () => overlayWindow?.hide())
 // Dashboard Actions (CRUD)
 ipcMain.handle('get-all-credentials', () => getAllCredentials())
 ipcMain.handle('get-credentials-page', (event, { page, pageSize }) => getCredentialsPage(page, pageSize))
-ipcMain.handle('add-credential', (event, data) => addCredential(data.domain, data.username, data.password))
+ipcMain.handle('add-credential', async (event, data) => {
+  const existing = findCredential(data.domain, data.username);
+  if (existing) {
+    const { response } = await dialog.showMessageBox({
+      type: 'question',
+      buttons: ['Overwrite', 'Cancel'],
+      defaultId: 0,
+      title: 'Duplicate Credential',
+      message: `A password for ${data.domain} (${data.username}) already exists.\nDo you want to overwrite it?`,
+      detail: 'The existing password will be updated.'
+    });
+
+    if (response === 1) return { cancelled: true }; // Cancelled
+
+    // Overwrite
+    return updateCredential(existing.id, data.username, data.password);
+  }
+  return addCredential(data.domain, data.username, data.password);
+})
 ipcMain.handle('delete-credential', (event, id) => deleteCredential(id))
 ipcMain.handle('update-credential', (event, data) => updateCredential(data.id, data.username, data.password))
 
 // Import / Export
 // Import
 ipcMain.handle('import-from-excel', async () => {
-  // Open file dialog
   const { filePaths } = await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [{ name: 'Excel Files', extensions: ['xlsx', 'xls', 'csv'] }]
+    filters: [
+      { name: 'Excel Files', extensions: ['xlsx', 'xls'] },
+      { name: 'CSV Files', extensions: ['csv'] }
+    ]
   })
 
-  if (filePaths && filePaths.length > 0) {
-    try {
-      // Read file buffer first to avoid locking issues/path errors
-      const fileBuffer = fs.readFileSync(filePaths[0]);
-      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+  // AGGRESSIVE focus restoration for Linux
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    console.log('[FOCUS] Restoring focus after import dialog');
+    dashboardWindow.restore(); // Restore if minimized
+    dashboardWindow.setAlwaysOnTop(true); // Force to top
+    dashboardWindow.show(); // Ensure visible
+    dashboardWindow.focus(); // Focus
+    dashboardWindow.setAlwaysOnTop(false); // Remove always-on-top
+    console.log('[FOCUS] Focus restored, window should be active');
+  }
 
+  if (filePaths && filePaths.length > 0) {
+    const filePath = filePaths[0]
+
+    try {
+      const buffer = fs.readFileSync(filePath)
+      const workbook = xlsx.read(buffer, { type: 'buffer' })
       const sheetName = workbook.SheetNames[0]
       const sheet = workbook.Sheets[sheetName]
       const rawData = xlsx.utils.sheet_to_json(sheet)
@@ -388,6 +444,25 @@ ipcMain.handle('import-from-excel', async () => {
       }
 
       if (validRows.length > 0) {
+
+        // 1. Check for duplicates first
+        const duplicates = checkDuplicates(validRows);
+        if (duplicates.length > 0) {
+          const message = `Found ${duplicates.length} duplicate entries (e.g., ${duplicates[0]}).\n\nDo you want to overwrite them with the new passwords?`;
+          const { response } = await dialog.showMessageBox({
+            type: 'question',
+            buttons: ['Overwrite & Import', 'Cancel'],
+            defaultId: 0,
+            title: 'Duplicates Found',
+            message: message,
+            detail: 'Existing passwords for these accounts will be updated.'
+          });
+
+          if (response === 1) { // Cancel (Index 1)
+            return { success: false, message: 'Import cancelled by user.' };
+          }
+        }
+
         bulkInsertCredentials(validRows);
         // Refresh dashboard if open
         if (dashboardWindow) {
@@ -414,6 +489,17 @@ ipcMain.handle('export-encrypted', async (event, password) => {
     filters: [{ name: 'PassKey Wallet Backup', extensions: ['qpass'] }]
   })
 
+  // AGGRESSIVE focus restoration for Linux
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    console.log('[FOCUS] Restoring focus after backup dialog');
+    dashboardWindow.restore();
+    dashboardWindow.setAlwaysOnTop(true);
+    dashboardWindow.show();
+    dashboardWindow.focus();
+    dashboardWindow.setAlwaysOnTop(false);
+    console.log('[FOCUS] Focus restored');
+  }
+
   if (filePath) {
     try {
       const data = getAllCredentials();
@@ -435,6 +521,18 @@ ipcMain.handle('select-backup-file', async () => {
     properties: ['openFile'],
     filters: [{ name: 'PassKey Wallet Backup', extensions: ['qpass'] }]
   })
+
+  // AGGRESSIVE focus restoration for Linux
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    console.log('[FOCUS] Restoring focus after restore file dialog');
+    dashboardWindow.restore();
+    dashboardWindow.setAlwaysOnTop(true);
+    dashboardWindow.show();
+    dashboardWindow.focus();
+    dashboardWindow.setAlwaysOnTop(false);
+    console.log('[FOCUS] Focus restored');
+  }
+
   return filePaths && filePaths.length > 0 ? filePaths[0] : null;
 })
 
@@ -448,11 +546,32 @@ ipcMain.handle('restore-backup', async (event, { filePath, password }) => {
     const decryptedData = decryptData(content, password);
 
     if (Array.isArray(decryptedData)) {
+
+      // 1. Check for duplicates
+      const duplicates = checkDuplicates(decryptedData);
+      if (duplicates.length > 0) {
+        const message = `Found ${duplicates.length} duplicate entries in backup (e.g., ${duplicates[0]}).\n\nDo you want to overwrite existing passwords?`;
+        const { response } = await dialog.showMessageBox({
+          type: 'question',
+          buttons: ['Overwrite & Restore', 'Cancel'],
+          defaultId: 0,
+          title: 'Backup Duplicates',
+          message: message,
+          detail: 'Existing passwords will be updated to match the backup.'
+        });
+
+        if (response === 1) { // Cancel
+          return { success: false, message: 'Restore cancelled by user.' };
+        }
+      }
+
       bulkInsertCredentials(decryptedData);
 
       // Refresh dashboard if it's open
+      // Refresh dashboard if it's open
       if (dashboardWindow) {
-        dashboardWindow.webContents.reload();
+        dashboardWindow.webContents.send('refresh-data');
+        dashboardWindow.focus(); // Ensure window reclaims focus
       } else {
         createDashboardWindow();
       }
