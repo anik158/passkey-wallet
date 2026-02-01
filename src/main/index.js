@@ -24,12 +24,32 @@ if (process.platform === 'linux') {
   app.disableHardwareAcceleration();
 }
 
+// Comprehensive error logging
+process.on('uncaughtException', (error) => {
+  console.error('=== UNCAUGHT EXCEPTION ===');
+  console.error(error);
+  console.error('Stack:', error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('=== UNHANDLED REJECTION ===');
+  console.error('Promise:', promise);
+  console.error('Reason:', reason);
+});
+
+console.log('=== APP STARTING ===');
+console.log('Platform:', process.platform);
+console.log('App path:', app.getAppPath());
+console.log('User data:', app.getPath('userData'));
+
 // Single Instance Lock - Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   console.log('Another instance is already running. Exiting...');
   app.quit();
+  // IMPORTANT: Exit the process immediately, don't continue execution
+  process.exit(0);
 } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
     // Someone tried to run a second instance, focus our window
@@ -43,6 +63,12 @@ if (!gotTheLock) {
     }
   });
 }
+
+// Ensure lock is released on exit
+app.on('will-quit', () => {
+  console.log('App will quit, releasing lock...');
+  app.releaseSingleInstanceLock();
+});
 
 let overlayWindow = null
 let dashboardWindow = null
