@@ -129,14 +129,14 @@ export function addCredential(domain, username, password) {
 
 export function getAllCredentials() {
   if (!db) throw new Error('DB not initialized');
-  return db.prepare('SELECT * FROM credentials ORDER BY domain ASC').all();
+  return db.prepare('SELECT * FROM credentials ORDER BY id DESC').all();
 }
 
 export function getCredentialsPage(page = 1, pageSize = 50) {
   if (!db) throw new Error('DB not initialized');
   const offset = (page - 1) * pageSize;
 
-  const data = db.prepare('SELECT * FROM credentials ORDER BY domain ASC LIMIT ? OFFSET ?').all(pageSize, offset);
+  const data = db.prepare('SELECT * FROM credentials ORDER BY id DESC LIMIT ? OFFSET ?').all(pageSize, offset);
   const countResult = db.prepare('SELECT COUNT(*) as count FROM credentials').get();
 
   return {
