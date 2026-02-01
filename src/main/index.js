@@ -132,11 +132,12 @@ function createOverlayWindow() {
 
 // Helper for finding icon
 const getIconPath = () => {
-  // In prod, resources are different. 
-  // But strictly following the structure:
-  // Root/public/passkey_wallet.svg
-  // __dirname is dist-electron. Parent is root.
-  return path.resolve(__dirname, '../public/passkey_wallet.svg');
+  // Use platform-specific icons
+  if (process.platform === 'win32') {
+    return path.resolve(__dirname, '../public/icon.ico');
+  }
+  // Linux and macOS use PNG
+  return path.resolve(__dirname, '../public/icon.png');
 }
 
 function createDashboardWindow() {
@@ -195,8 +196,16 @@ function createLoginWindow() {
   if (devServerUrl) {
     loginWindow.loadURL(path.join(devServerUrl, 'src/render/login.html'))
   } else {
-    loginWindow.loadFile(path.join(__dirname, '../render/login.html'))
+    const htmlPath = path.join(__dirname, '../render/login.html');
+    console.log('[LOGIN] Loading from:', htmlPath);
+    console.log('[LOGIN] File exists:', fs.existsSync(htmlPath));
+    loginWindow.loadFile(htmlPath);
   }
+
+  // Debug: Check for load errors
+  loginWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('[LOGIN] Failed to load:', errorCode, errorDescription);
+  });
 
   loginWindow.on('closed', () => {
     loginWindow = null
