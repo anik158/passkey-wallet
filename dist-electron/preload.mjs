@@ -1,1 +1,26 @@
-"use strict";const r=require("electron");r.contextBridge.exposeInMainWorld("api",{onShowCredentials:e=>r.ipcRenderer.on("show-credentials",(i,n)=>e(n)),hideOverlay:()=>r.ipcRenderer.send("hide-overlay"),copyToClipboard:e=>r.ipcRenderer.send("copy-to-clipboard",e),login:e=>r.ipcRenderer.invoke("login-attempt",e),checkDbExists:()=>r.ipcRenderer.invoke("check-db-exists"),getAllCredentials:()=>r.ipcRenderer.invoke("get-all-credentials"),getCredentialsPage:(e,i)=>r.ipcRenderer.invoke("get-credentials-page",{page:e,pageSize:i}),addCredential:e=>r.ipcRenderer.invoke("add-credential",e),deleteCredential:e=>r.ipcRenderer.invoke("delete-credential",e),updateCredential:e=>r.ipcRenderer.invoke("update-credential",e),importFromExcel:()=>r.ipcRenderer.invoke("import-from-excel"),exportEncrypted:e=>r.ipcRenderer.invoke("export-encrypted",e),selectBackupFile:()=>r.ipcRenderer.invoke("select-backup-file"),restoreBackup:(e,i)=>r.ipcRenderer.invoke("restore-backup",{filePath:e,password:i}),getSettings:()=>r.ipcRenderer.invoke("get-settings"),saveSettings:e=>r.ipcRenderer.invoke("save-settings",e),lockApp:()=>r.ipcRenderer.invoke("lock-app"),deleteAllCredentials:()=>r.ipcRenderer.invoke("delete-all-credentials")});
+"use strict";
+const electron = require("electron");
+electron.contextBridge.exposeInMainWorld("api", {
+  onShowCredentials: (callback) => electron.ipcRenderer.on("show-credentials", (_event, value) => callback(value)),
+  hideOverlay: () => electron.ipcRenderer.send("hide-overlay"),
+  copyToClipboard: (text) => electron.ipcRenderer.send("copy-to-clipboard", text),
+  login: (password) => electron.ipcRenderer.invoke("login-attempt", password),
+  checkDbExists: () => electron.ipcRenderer.invoke("check-db-exists"),
+  // Dashboard APIs
+  getAllCredentials: () => electron.ipcRenderer.invoke("get-all-credentials"),
+  getCredentialsPage: (page, pageSize) => electron.ipcRenderer.invoke("get-credentials-page", { page, pageSize }),
+  addCredential: (data) => electron.ipcRenderer.invoke("add-credential", data),
+  deleteCredential: (id) => electron.ipcRenderer.invoke("delete-credential", id),
+  updateCredential: (data) => electron.ipcRenderer.invoke("update-credential", data),
+  // Import/Export
+  importFromExcel: () => electron.ipcRenderer.invoke("import-from-excel"),
+  // Secure Backup
+  exportEncrypted: (password) => electron.ipcRenderer.invoke("export-encrypted", password),
+  selectBackupFile: () => electron.ipcRenderer.invoke("select-backup-file"),
+  restoreBackup: (filePath, password) => electron.ipcRenderer.invoke("restore-backup", { filePath, password }),
+  // Settings & Security
+  getSettings: () => electron.ipcRenderer.invoke("get-settings"),
+  saveSettings: (settings) => electron.ipcRenderer.invoke("save-settings", settings),
+  lockApp: () => electron.ipcRenderer.invoke("lock-app"),
+  deleteAllCredentials: () => electron.ipcRenderer.invoke("delete-all-credentials")
+});

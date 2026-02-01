@@ -122,7 +122,7 @@ function createOverlayWindow() {
   if (devServerUrl) {
     overlayWindow.loadURL(path.join(devServerUrl, 'src/render/overlay.html'))
   } else {
-    overlayWindow.loadFile(path.join(__dirname, '../render/overlay.html'))
+    overlayWindow.loadFile(path.join(__dirname, '../dist/src/render/overlay.html'))
   }
 
   overlayWindow.on('closed', () => {
@@ -166,7 +166,7 @@ function createDashboardWindow() {
     dashboardWindow.loadURL(path.join(devServerUrl, 'src/render/dashboard.html'))
     // dashboardWindow.webContents.openDevTools() // Debug mode ENABLED
   } else {
-    dashboardWindow.loadFile(path.join(__dirname, '../render/dashboard.html'))
+    dashboardWindow.loadFile(path.join(__dirname, '../dist/src/render/dashboard.html'))
   }
 
   dashboardWindow.once('ready-to-show', () => {
@@ -196,7 +196,8 @@ function createLoginWindow() {
   if (devServerUrl) {
     loginWindow.loadURL(path.join(devServerUrl, 'src/render/login.html'))
   } else {
-    const htmlPath = path.join(__dirname, '../render/login.html');
+    // In production, Vite puts files in dist/src/render/
+    const htmlPath = path.join(__dirname, '../dist/src/render/login.html');
     console.log('[LOGIN] Loading from:', htmlPath);
     console.log('[LOGIN] File exists:', fs.existsSync(htmlPath));
     loginWindow.loadFile(htmlPath);
