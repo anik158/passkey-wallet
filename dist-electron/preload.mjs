@@ -21,5 +21,6 @@ electron.contextBridge.exposeInMainWorld("api", {
   // Settings & Security
   getSettings: () => electron.ipcRenderer.invoke("get-settings"),
   saveSettings: (settings) => electron.ipcRenderer.invoke("save-settings", settings),
-  lockApp: () => electron.ipcRenderer.invoke("lock-app")
+  lockApp: () => electron.ipcRenderer.invoke("lock-app"),
+  deleteAllCredentials: () => electron.ipcRenderer.invoke("delete-all-credentials")
 });

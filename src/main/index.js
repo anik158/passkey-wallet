@@ -2,7 +2,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, clipboard, dialog, Menu, p
 import path from 'path'
 import { fileURLToPath } from 'url'
 import activeWin from 'active-win'
-import { initDatabase, getCredentials, addCredential, getAllCredentials, deleteCredential, updateCredential, bulkInsertCredentials, getCredentialsPage, closeDatabase, checkDuplicates, findCredential } from './db.js'
+import { initDatabase, getCredentials, addCredential, getAllCredentials, deleteCredential, deleteAllCredentials, updateCredential, bulkInsertCredentials, getCredentialsPage, closeDatabase, checkDuplicates, findCredential } from './db.js'
 import * as xlsx from 'xlsx'
 import { encryptData, decryptData } from './crypto.js'
 import fs from 'fs'
@@ -163,7 +163,7 @@ function createDashboardWindow() {
   if (devServerUrl) {
     // In dev mode, we assume Vite serves this file
     dashboardWindow.loadURL(path.join(devServerUrl, 'src/render/dashboard.html'))
-    dashboardWindow.webContents.openDevTools() // Debug mode ENABLED
+    // dashboardWindow.webContents.openDevTools() // Debug mode ENABLED
   } else {
     dashboardWindow.loadFile(path.join(__dirname, '../render/dashboard.html'))
   }
@@ -372,6 +372,15 @@ ipcMain.handle('add-credential', async (event, data) => {
   return addCredential(data.domain, data.username, data.password);
 })
 ipcMain.handle('delete-credential', (event, id) => deleteCredential(id))
+ipcMain.handle('delete-all-credentials', () => {
+  try {
+    const result = deleteAllCredentials()
+    return { success: true, count: result.count }
+  } catch (err) {
+    console.error('Delete all failed:', err)
+    return { success: false, message: err.message }
+  }
+})
 ipcMain.handle('update-credential', (event, data) => updateCredential(data.id, data.username, data.password))
 
 // Import / Export
@@ -595,6 +604,8 @@ ipcMain.handle('get-settings', () => {
 ipcMain.handle('save-settings', (event, settings) => {
   if (settings.autoLockMinutes !== undefined) {
     store.set('autoLockMinutes', parseInt(settings.autoLockMinutes));
+    // Restart the timer with the new duration
+    startAutoLockTimer();
   }
   return true;
 });

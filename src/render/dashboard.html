@@ -465,10 +465,6 @@
                 /* Hide spacer */
             }
 
-            button:not(.toggle-password) {
-                width: 100%;
-            }
-
             /* Adjust imports row */
             .actions>div {
                 flex-direction: column;
@@ -481,33 +477,77 @@
                 margin: 5px 0 10px 0;
             }
         }
+
+        /* ===== HAMBURGER MENU FOR NARROW SCREENS ===== */
+        @media (max-width: 900px) {
+            .burger-menu {
+                display: block !important;
+            }
+
+            /* Hide normal action bar, show as dropdown */
+            .actions {
+                display: none;
+                position: absolute;
+                top: 80px;
+                left: 1rem;
+                right: 1rem;
+                background: rgba(30, 30, 30, 0.98);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(6, 182, 212, 0.3);
+                border-radius: 8px;
+                padding: 1rem;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 10px;
+                z-index: 1000;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            }
+
+            .actions.show {
+                display: flex !important;
+            }
+
+            /* Buttons in hamburger menu - fit 3 per row */
+            .actions button {
+                width: calc(33.333% - 7px) !important;
+                flex: 0 0 calc(33.333% - 7px);
+            }
+
+            .actions>span {
+                display: none;
+            }
+
+            header {
+                flex-direction: row !important;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <img src="/passkey_wallet.svg" alt="App Logo" class="logo">
-            <h1>Passkey Wallet</h1>
+        <header style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                <img src="/passkey_wallet.svg" alt="App Logo" class="logo">
+                <h1 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;">Passkey Wallet
+                </h1>
+            </div>
+            <button id="btnBurger" class="burger-menu" title="Menu"
+                style="display: none; font-size: 1.5rem; padding: 8px 12px;">☰</button>
         </header>
 
-        <div class="actions">
+        <div class="actions" id="mainActions">
             <button class="primary" id="btnAdd">+ Add Password</button>
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <button id="btnImport" title="(Expected cols: Domain, User, Pass)">Import Excel</button>
-            </div>
-
-            <span style="flex-grow:1"></span>
-
-            <div style="display: flex; gap: 8px;">
-                <button id="btnSettings" title="App Settings">Settings</button>
-                <button id="btnLock" class="btn-danger" title="Lock App Now">Lock 🔒</button>
-                <button id="btnHelp" title="User Check Manual">Help ❓</button>
-            </div>
-
+            <button id="btnImport" title="Import from XLSX file (Columns: Domain, Username, Password)">Import
+                Excel</button>
             <button id="btnBackup" title="Export secure backup">Backup .qpass</button>
             <button id="btnRestore" title="Restore from secure backup">Restore .qpass</button>
+            <button id="btnSettings" title="App Settings">Settings</button>
+            <button id="btnLock" class="btn-danger" title="Lock App Now">Lock 🔒</button>
+            <button id="btnHelp" title="User Check Manual">Help ❓</button>
+            <button id="btnDeleteAll" class="btn-danger" title="Delete all credentials from vault">Delete All</button>
         </div>
+
 
         <!-- ... table ... -->
 
@@ -588,9 +628,9 @@
                 <h3>Navigation & Buttons</h3>
                 <ul>
                     <li><b>Add Credential:</b> Create a new password entry manually.</li>
-                    <li><b>Import Excel:</b> Load passwords from a CSV/XLSX file. Columns should be: <i>Domain,
+                    <li><b>Import Excel:</b> Load passwords from an XLSX file. Columns should be: <i>Domain,
                             Username, Password</i>.</li>
-                    <li><b>Backup .qpass:</b> Export your entire vault to an encrypted file. You assume a password for
+                    <li><b>Backup .qpass:</b> Export your entire vault to an encrypted file. You set a password for
                         this file.</li>
                     <li><b>Restore .qpass:</b> Load a previously backed-up .qpass file. Requires the password you set.
                     </li>
@@ -606,6 +646,12 @@
                     </li>
                     <li><b>Clipboard:</b> Passwords are copied to clipboard. Be careful to paste them only where
                         intended.</li>
+                </ul>
+
+                <h3>💡 Recommendation</h3>
+                <ul>
+                    <li><b>Regular Backups:</b> We strongly recommend backing up your password vault regularly using
+                        the <b>"Backup .qpass"</b> button. Store the backup file in a secure location.</li>
                 </ul>
             </div>
             <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
@@ -634,8 +680,73 @@
         </div>
     </div>
 
+    <!-- Custom Alert/Confirm Modal -->
+    <div id="customDialog" class="modal">
+        <div class="modal-content" style="width: 350px;">
+            <h2 id="dialogTitle">Notice</h2>
+            <p id="dialogMessage"
+                style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;"></p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" id="dialogCancel" style="display: none;">Cancel</button>
+                <button type="button" id="dialogConfirm" class="primary">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         console.log('Dashboard script loaded!');
+
+        // Custom Alert/Confirm Dialog System
+        function customAlert(message, title = 'Notice') {
+            return new Promise((resolve) => {
+                const dialog = document.getElementById('customDialog');
+                const dialogTitle = document.getElementById('dialogTitle');
+                const dialogMessage = document.getElementById('dialogMessage');
+                const dialogCancel = document.getElementById('dialogCancel');
+                const dialogConfirm = document.getElementById('dialogConfirm');
+
+                dialogTitle.textContent = title;
+                dialogMessage.textContent = message;
+                dialogCancel.style.display = 'none';
+                dialogConfirm.textContent = 'OK';
+
+                dialog.classList.add('active');
+                dialogConfirm.focus();
+
+                const close = () => {
+                    dialog.classList.remove('active');
+                    resolve();
+                };
+
+                dialogConfirm.onclick = close;
+            });
+        }
+
+        function customConfirm(message, title = 'Confirm') {
+            return new Promise((resolve) => {
+                const dialog = document.getElementById('customDialog');
+                const dialogTitle = document.getElementById('dialogTitle');
+                const dialogMessage = document.getElementById('dialogMessage');
+                const dialogCancel = document.getElementById('dialogCancel');
+                const dialogConfirm = document.getElementById('dialogConfirm');
+
+                dialogTitle.textContent = title;
+                dialogMessage.textContent = message;
+                dialogCancel.style.display = 'block';
+                dialogConfirm.textContent = 'Confirm';
+
+                dialog.classList.add('active');
+                dialogConfirm.focus();
+
+                const close = (result) => {
+                    dialog.classList.remove('active');
+                    resolve(result);
+                };
+
+                dialogCancel.onclick = () => close(false);
+                dialogConfirm.onclick = () => close(true);
+            });
+        }
 
         // Helper to secure the view against XSS (basic)
         const escapeHtml = (str) => {
@@ -737,7 +848,7 @@
                     document.getElementById('modalTitle').textContent = 'Edit Credential';
                     document.getElementById('editId').value = editBtn.dataset.id;
                     document.getElementById('inpDomain').value = editBtn.dataset.domain;
-                    document.getElementById('inpDomain').disabled = true; // Domain is primary key-ish for now
+                    // Domain is now editable - no longer disabled
                     document.getElementById('inpUser').value = editBtn.dataset.user;
                     document.getElementById('inpPass').value = editBtn.dataset.pass;
                     modal.classList.add('active');
@@ -745,7 +856,7 @@
 
                 const delBtn = tr.querySelector('.btn-delete');
                 delBtn.onclick = async () => {
-                    if (confirm(`Delete password for ${cred.domain}?`)) {
+                    if (await customConfirm(`Delete password for ${cred.domain}?`, 'Delete Credential')) {
                         await window.api.deleteCredential(cred.id);
                         loadCredentials();
                     }
@@ -766,7 +877,6 @@
             document.getElementById('modalTitle').textContent = 'Add Credential';
             form.reset();
             document.getElementById('editId').value = '';
-            document.getElementById('inpDomain').disabled = false;
             modal.classList.add('active');
         };
 
@@ -804,11 +914,11 @@
             if (res.success) {
                 let msg = `Imported ${res.count} passwords!`;
                 if (res.skipped > 0) msg += ` (Skipped ${res.skipped} invalid rows)`;
-                alert(msg);
+                await customAlert(msg, 'Import Warning');
                 currentPage = 1; // Go to first page to see new items
                 loadCredentials();
             } else if (!res.cancelled) {
-                alert('Import failed: ' + res.message);
+                await customAlert('Import failed: ' + res.message, 'Import Error');
             }
         };
 
@@ -849,8 +959,8 @@
             if (!password) return;
 
             const res = await window.api.exportEncrypted(password);
-            if (res.success) alert('Backup saved successfully!');
-            else if (!res.cancelled) alert('Backup failed: ' + res.message);
+            if (res.success) await customAlert('Backup saved successfully!', 'Backup Complete');
+            else if (!res.cancelled) await customAlert('Backup failed: ' + res.message, 'Backup Error');
         };
 
         document.getElementById('btnRestore').onclick = async () => {
@@ -866,15 +976,15 @@
 
             if (!password) return;
 
-            if (!confirm('This will import passwords from the backup. Continue?')) return;
+            if (!await customConfirm('This will import passwords from the backup. Continue?', 'Restore Backup')) return;
 
             // 3. Restore
             const res = await window.api.restoreBackup(filePath, password);
             if (res.success) {
-                alert(`Restored ${res.count} passwords!`);
+                await customAlert(`Restored ${res.count} passwords!`, 'Restore Complete');
                 loadCredentials();
             } else {
-                alert('Restore failed: ' + res.message);
+                await customAlert('Restore failed: ' + res.message, 'Restore Error');
             }
         };
 
@@ -908,7 +1018,7 @@
                 settingsModal.classList.add('active');
             } catch (err) {
                 console.error(err);
-                alert('Error loading settings: ' + err.message);
+                await customAlert('Error loading settings: ' + err.message, 'Settings Error');
             }
         };
 
@@ -922,13 +1032,38 @@
                 autoLockMinutes: inpAutoLock.value
             });
             settingsModal.classList.remove('active');
-            alert('Settings saved!');
+            await customAlert('Settings saved!', 'Settings');
         };
 
         // Lock Logic
         document.getElementById('btnLock').onclick = async () => {
-            if (confirm('Lock the application now?')) {
+            if (await customConfirm('Lock the application now?', 'Lock Application')) {
                 await window.api.lockApp();
+            }
+        };
+
+        // Delete All Logic
+        document.getElementById('btnDeleteAll').onclick = async () => {
+            const confirmed = await customConfirm(
+                'This will permanently delete ALL credentials from your vault. This action cannot be undone!\n\nAre you absolutely sure?',
+                '⚠️ Delete All Credentials'
+            );
+
+            if (confirmed) {
+                const doubleCheck = await customConfirm(
+                    'Last warning: All your passwords will be lost forever. Continue?',
+                    '⚠️ Final Confirmation'
+                );
+
+                if (doubleCheck) {
+                    const result = await window.api.deleteAllCredentials();
+                    if (result.success) {
+                        await customAlert(`Deleted ${result.count} credentials.`, 'All Credentials Deleted');
+                        loadCredentials();
+                    } else {
+                        await customAlert('Failed to delete credentials: ' + result.message, 'Error');
+                    }
+                }
             }
         };
 
@@ -946,6 +1081,21 @@
             btnHelpClose.onclick = () => {
                 helpModal.classList.remove('active');
             }
+        }
+
+        // Burger Menu Toggle
+        const btnBurger = document.getElementById('btnBurger');
+        const mainActions = document.getElementById('mainActions');
+        if (btnBurger && mainActions) {
+            btnBurger.onclick = () => {
+                mainActions.classList.toggle('show');
+            };
+            // Close menu when clicking a button
+            mainActions.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    mainActions.classList.remove('show');
+                });
+            });
         }
 
         // Start

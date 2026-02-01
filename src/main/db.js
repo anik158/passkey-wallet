@@ -150,6 +150,22 @@ export function deleteCredential(id) {
   return db.prepare('DELETE FROM credentials WHERE id = ?').run(id);
 }
 
+/**
+ * Delete all credentials from the database
+ * @returns {{success: boolean, count: number}}
+ */
+export function deleteAllCredentials() {
+  if (!db) throw new Error('DB not initialized');
+
+  const stmt = db.prepare('SELECT COUNT(*) as count FROM credentials');
+  const { count } = stmt.get();
+
+  const deleteStmt = db.prepare('DELETE FROM credentials');
+  deleteStmt.run();
+
+  return { success: true, count };
+}
+
 export function updateCredential(id, username, password) {
   // We aren't updating domain currently in UI, but if we did, we'd normalize it too.
   // The current UI sends { id, domain, username, password } but domain is disabled.

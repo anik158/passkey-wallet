@@ -100,6 +100,14 @@ function deleteCredential(id) {
   if (!db) throw new Error("DB not initialized");
   return db.prepare("DELETE FROM credentials WHERE id = ?").run(id);
 }
+function deleteAllCredentials() {
+  if (!db) throw new Error("DB not initialized");
+  const stmt = db.prepare("SELECT COUNT(*) as count FROM credentials");
+  const { count } = stmt.get();
+  const deleteStmt = db.prepare("DELETE FROM credentials");
+  deleteStmt.run();
+  return { success: true, count };
+}
 function updateCredential(id, username, password) {
   if (!db) throw new Error("DB not initialized");
   return db.prepare("UPDATE credentials SET username = ?, password = ? WHERE id = ?").run(username, password, id);
@@ -26320,7 +26328,6 @@ function createDashboardWindow() {
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
     dashboardWindow.loadURL(path.join(devServerUrl, "src/render/dashboard.html"));
-    dashboardWindow.webContents.openDevTools();
   } else {
     dashboardWindow.loadFile(path.join(__dirname$1, "../render/dashboard.html"));
   }
@@ -26479,6 +26486,15 @@ Do you want to overwrite it?`,
   return addCredential(data.domain, data.username, data.password);
 });
 ipcMain.handle("delete-credential", (event, id) => deleteCredential(id));
+ipcMain.handle("delete-all-credentials", () => {
+  try {
+    const result = deleteAllCredentials();
+    return { success: true, count: result.count };
+  } catch (err) {
+    console.error("Delete all failed:", err);
+    return { success: false, message: err.message };
+  }
+});
 ipcMain.handle("update-credential", (event, data) => updateCredential(data.id, data.username, data.password));
 ipcMain.handle("import-from-excel", async () => {
   const { filePaths } = await dialog.showOpenDialog({
@@ -26654,6 +26670,7 @@ ipcMain.handle("get-settings", () => {
 ipcMain.handle("save-settings", (event, settings) => {
   if (settings.autoLockMinutes !== void 0) {
     store.set("autoLockMinutes", parseInt(settings.autoLockMinutes));
+    startAutoLockTimer();
   }
   return true;
 });

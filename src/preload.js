@@ -25,5 +25,6 @@ contextBridge.exposeInMainWorld('api', {
     // Settings & Security
     getSettings: () => ipcRenderer.invoke('get-settings'),
     saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
-    lockApp: () => ipcRenderer.invoke('lock-app')
+    lockApp: () => ipcRenderer.invoke('lock-app'),
+    deleteAllCredentials: () => ipcRenderer.invoke('delete-all-credentials')
 })
