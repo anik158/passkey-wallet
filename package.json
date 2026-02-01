@@ -41,27 +41,25 @@
       "package.json",
       "public/**/*"
     ],
+    "publish": null,
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
-      "category": "Utility",
-      "icon": "public/passkey_wallet.svg"
+      "category": "Utility"
     },
     "win": {
       "target": [
         "nsis",
         "portable"
-      ],
-      "icon": "public/passkey_wallet.svg"
+      ]
     },
     "mac": {
       "target": [
         "dmg",
         "zip"
       ],
-      "icon": "public/passkey_wallet.svg",
       "category": "public.app-category.utilities"
     }
   }
