@@ -48,7 +48,10 @@
         "deb"
       ],
       "category": "Utility",
-      "icon": "public/icon.png"
+      "icon": "public/icon.png",
+      "desktop": {
+        "Icon": "passkey-wallet"
+      }
     },
     "win": {
       "target": [
