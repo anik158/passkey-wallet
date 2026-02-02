@@ -25,6 +25,7 @@
   "dependencies": {
     "active-win": "^8.2.1",
     "argon2": "^0.44.0",
+    "axios": "^1.13.4",
     "better-sqlite3-multiple-ciphers": "^12.6.2",
     "electron-store": "^11.0.2",
     "xlsx": "^0.18.5"

@@ -1,11 +1,13 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, clipboard, dialog, Menu, powerMonitor } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, clipboard, dialog, Menu, powerMonitor, Tray, shell } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { getBrowserURL } from './urlDetector.js';
 import activeWin from 'active-win'
 import { initDatabase, getCredentials, addCredential, getAllCredentials, deleteCredential, deleteAllCredentials, updateCredential, bulkInsertCredentials, getCredentialsPage, closeDatabase, checkDuplicates, findCredential } from './db.js'
 import * as xlsx from 'xlsx'
 import { encryptData, decryptData } from './crypto.js'
 import fs from 'fs'
+import { setupBrowserExtension, getExtensionPath } from './extensionSetup.js'
 import Store from 'electron-store';
 
 const store = new Store();
@@ -24,7 +26,6 @@ if (process.platform === 'linux') {
   app.disableHardwareAcceleration();
 }
 
-// Comprehensive error logging
 process.on('uncaughtException', (error) => {
   console.error('=== UNCAUGHT EXCEPTION ===');
   console.error(error);
@@ -42,90 +43,102 @@ console.log('Platform:', process.platform);
 console.log('App path:', app.getAppPath());
 console.log('User data:', app.getPath('userData'));
 
-// Single Instance Lock - Prevent multiple instances
-const gotTheLock = app.requestSingleInstanceLock();
+const gotLock = app.requestSingleInstanceLock();
 
-if (!gotTheLock) {
+if (!gotLock) {
   console.log('Another instance is already running. Exiting...');
   app.quit();
-  // IMPORTANT: Exit the process immediately, don't continue execution
-  process.exit(0);
 } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // Someone tried to run a second instance, focus our window
     console.log('Second instance attempted, focusing existing window');
+
     if (dashboardWindow) {
       if (dashboardWindow.isMinimized()) dashboardWindow.restore();
+      dashboardWindow.show();
       dashboardWindow.focus();
     } else if (loginWindow) {
       if (loginWindow.isMinimized()) loginWindow.restore();
+      loginWindow.show();
       loginWindow.focus();
+    } else {
+      createLoginWindow();
     }
   });
 }
 
-// Ensure lock is released on exit
 app.on('will-quit', () => {
   console.log('App will quit, releasing lock...');
   app.releaseSingleInstanceLock();
 });
 
-let overlayWindow = null
-let dashboardWindow = null
-let loginWindow = null
-
+/**
+ * Detects the current active window's domain for credential matching.
+ * Priority: 1) Direct URL extraction (OS-specific), 2) activeWin URL, 3) Title parsing
+ * Returns domain, app name, and detection method for debugging.
+ */
 async function getCurrentDomain() {
   try {
     const winInfo = await activeWin()
-    // console.log('Active Window Info:', winInfo); // DEBUG LOG
+    console.log('[DOMAIN] Active window:', {
+      title: winInfo?.title,
+      url: winInfo?.url,
+      app: winInfo?.owner?.name
+    });
 
     if (!winInfo?.title) return null
 
     const appName = winInfo.owner?.name || 'Unknown App';
-    // 0. Ignore ourself
     if (appName.includes('PassKey Wallet') || appName.includes('Electron')) {
-      // console.log('Ignoring self focus');
       return null;
     }
 
     let title = winInfo.title.trim()
     let domain = null;
+    let method = 'unknown';
 
-    // 1. Try to extract URL if available (Linux/macOS sometimes support this)
+    const directURL = await getBrowserURL();
+    if (directURL) {
+      domain = directURL;
+      method = 'direct-url';
+      console.log('[DOMAIN] Detected via direct extraction:', domain);
+      return { domain, appName, method };
+    }
+
     if (winInfo.url) {
       try {
         const urlObj = new URL(winInfo.url)
-        // console.log('Got URL from OS:', urlObj.hostname);
         domain = urlObj.hostname.replace('www.', '');
+        method = 'activewin-url';
+        console.log('[DOMAIN] Detected from activeWin URL:', domain);
       } catch (e) { /* ignore */ }
     }
 
     if (!domain) {
-      // 2. Heuristics: Remove common browser suffixes to reduce noise
       const cleanedTitle = title.replace(/(?: - | — | \| )(?:Google Chrome|Chromium|Microsoft Edge|Mozilla Firefox|Brave|Vivaldi|Opera).*/i, '')
-
-      // 3. If it looks like a URL found in title, extract it
-      // Regex for finding domain-like strings (e.g., mysite.com, login.google.com)
       const urlMatch = cleanedTitle.match(/([a-zA-Z0-9-]+\.[a-zA-Z]{2,})/i)
       if (urlMatch?.[1]) {
-        // console.log('Extracted URL from title:', urlMatch[1]);
         domain = urlMatch[1].toLowerCase();
+        method = 'title-regex';
+        console.log('[DOMAIN] Detected from title regex:', domain);
       } else {
-        // If no domain-like string, use the first part of the title as a best guess
-        // e.g. "Google - Google Chrome" -> "Google" (cleaned above)
-        // If users have "My Bank" as title but "mybank.com" in DB, fuzzy search in DB handles it?
-        // console.log('Using cleaned title for fuzzy search:', cleanedTitle);
-        domain = cleanedTitle;
+        domain = cleanedTitle.toLowerCase().trim();
+        method = 'title-fallback';
+        console.log('[DOMAIN] Using title as-is:', domain);
       }
     }
 
-    return { domain, appName };
+    return { domain, appName, method };
 
   } catch (err) {
     console.error('Active window error:', err)
     return null
   }
 }
+
+let overlayWindow = null
+let dashboardWindow = null
+let loginWindow = null
+let tray = null
 
 function createOverlayWindow() {
   overlayWindow = new BrowserWindow({
@@ -145,8 +158,8 @@ function createOverlayWindow() {
   })
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL
-  if (devServerUrl) {
-    overlayWindow.loadURL(path.join(devServerUrl, 'src/render/overlay.html'))
+  if (devServerUrl && !app.isPackaged) {
+    overlayWindow.loadURL(`${devServerUrl}src/render/overlay.html`)
   } else {
     overlayWindow.loadFile(path.join(__dirname, '../dist/src/render/overlay.html'))
   }
@@ -156,28 +169,30 @@ function createOverlayWindow() {
   })
 }
 
-// Helper for finding icon
+/**
+ * Returns platform-specific icon path (ICO for Windows, PNG for Linux/Mac)
+ */
 const getIconPath = () => {
-  // Use platform-specific icons
   if (process.platform === 'win32') {
     return path.resolve(__dirname, '../public/icon.ico');
   }
-  // Linux and macOS use PNG
   return path.resolve(__dirname, '../public/icon.png');
 }
 
+/**
+ * Creates the main dashboard window.
+ * Window is hidden (not destroyed) on close for security - database is locked and login window shown.
+ */
 function createDashboardWindow() {
   if (dashboardWindow) {
     dashboardWindow.focus()
     return
   }
 
-  // Create the main application window
   dashboardWindow = new BrowserWindow({
     width: 1000,
-    height: 800,
-    show: false, // Wait until ready to show
-    title: 'PassKey Wallet - Password Manager',
+    height: 700,
+    title: 'Dashboard - PassKey Wallet',
     icon: getIconPath(),
     webPreferences: {
       preload: PRELOAD_PATH,
@@ -186,13 +201,30 @@ function createDashboardWindow() {
     }
   })
 
+  dashboardWindow.on('close', (e) => {
+    e.preventDefault();
+    console.log('[DASHBOARD] Closing - hiding to system tray');
+    dashboardWindow.hide();
+    closeDatabase();
+
+    if (!tray) {
+      createTray();
+    }
+
+    if (false && !loginWindow) {
+      createLoginWindow();
+    } else {
+      loginWindow.show();
+      loginWindow.focus();
+    }
+  });
+
   const devServerUrl = process.env.VITE_DEV_SERVER_URL
-  if (devServerUrl) {
-    // In dev mode, we assume Vite serves this file
-    dashboardWindow.loadURL(path.join(devServerUrl, 'src/render/dashboard.html'))
+  if (devServerUrl && !app.isPackaged) {
+    dashboardWindow.loadURL(`${devServerUrl}src/render/dashboard.html`)
     // dashboardWindow.webContents.openDevTools() // Debug mode ENABLED
   } else {
-    dashboardWindow.loadFile(path.join(__dirname, '../dist/src/render/dashboard.html'))
+    dashboardWindow.loadFile(`${__dirname}/../dist/src/render/dashboard.html`)
   }
 
   dashboardWindow.once('ready-to-show', () => {
@@ -219,14 +251,15 @@ function createLoginWindow() {
   })
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL
-  if (devServerUrl) {
-    loginWindow.loadURL(path.join(devServerUrl, 'src/render/login.html'))
+  if (devServerUrl && !app.isPackaged) {
+    loginWindow.loadURL(`${devServerUrl}src/render/login.html`)
+    console.log('[LOGIN] Loading from dev server:', `${devServerUrl}src/render/login.html`)
   } else {
     // In production, Vite puts files in dist/src/render/
-    const htmlPath = path.join(__dirname, '../dist/src/render/login.html');
-    console.log('[LOGIN] Loading from:', htmlPath);
-    console.log('[LOGIN] File exists:', fs.existsSync(htmlPath));
-    loginWindow.loadFile(htmlPath);
+    const loginPath = path.join(__dirname, '../dist/src/render/login.html');
+    console.log('[LOGIN] Loading from:', loginPath);
+    console.log('[LOGIN] File exists:', fs.existsSync(loginPath));
+    loginWindow.loadFile(loginPath);
   }
 
   // Debug: Check for load errors
@@ -313,24 +346,59 @@ function lockApp() {
   }
 }
 
+/**
+ * Creates system tray icon for background operation.
+ * Click tray icon to restore dashboard (requires re-authentication).
+ */
+function createTray() {
+  const iconPath = getIconPath();
+  tray = new Tray(iconPath);
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show Dashboard',
+      click: () => {
+        if (!loginWindow) {
+          createLoginWindow();
+        }
+        loginWindow.show();
+        loginWindow.focus();
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setToolTip('PassKey Wallet');
+  tray.setContextMenu(contextMenu);
+
+  tray.on('click', () => {
+    if (!loginWindow) {
+      createLoginWindow();
+    }
+    loginWindow.show();
+    loginWindow.focus();
+  });
+}
+
+/**
+ * Starts the application by creating overlay window, dashboard, and registering global shortcut.
+ * Ctrl+Alt+P triggers overlay to show credentials for currently active window.
+ */
 function startApp() {
   createOverlayWindow()
   createDashboardWindow()
   startAutoLockTimer();
 
   globalShortcut.register('Control+Alt+P', async () => {
-    // SECURITY: If app is locked (DB closed), show login window
-    const appData = app.getPath('appData');
-    const dbPath = path.join(appData, 'passkey-wallet', 'passwords.db');
-
-    // We can also check if dashboardWindow exists. If not, likely locked.
-    // But checking DB is more accurate for "can we access secrets".
-    // Also we exported closeDatabase, so internal 'db' var will be null.
-    // getCredentials throws if db is null.
     try {
       getAllCredentials().slice(0, 1);
     } catch (e) {
-      // console.log('DB seems closed/locked, showing login window.');
       if (!loginWindow) createLoginWindow();
       else {
         loginWindow.show();
@@ -343,24 +411,25 @@ function startApp() {
 
     const result = await getCurrentDomain()
     if (!result || !result.domain) {
-      console.log('Could not detect active window domain')
+      console.log('[OVERLAY] Could not detect active window domain')
       return
     }
 
-    const { domain, appName } = result;
+    const { domain, appName, method } = result;
+    console.log('[OVERLAY] Detected domain:', domain, 'via', method, 'from', appName);
 
     const creds = getCredentials(domain)
-    const data = creds.length > 0 ? {
-      site: creds[0].domain, // Use the actual found domain (e.g. google.com) instead of fuzzy title
-      appName: appName,
-      username: creds[0].username,
-      password: creds[0].password
-    } : {
+    console.log('[OVERLAY] Found', creds.length, 'credential(s) for', domain);
+
+    const data = {
       site: domain,
       appName: appName,
-      username: null,
-      password: null
-    }
+      credentials: creds.map(c => ({
+        username: c.username,
+        password: c.password,
+        id: c.id
+      }))
+    };
 
     overlayWindow.webContents.send('show-credentials', data)
     overlayWindow.center()
@@ -369,8 +438,18 @@ function startApp() {
   })
 }
 
-app.whenReady().then(() => {
-  createLoginWindow();
+app.whenReady().then(async () => {
+  createLoginWindow()
+
+  setupBrowserExtension().then(result => {
+    if (result.success && result.installed > 0) {
+      console.log(`[Extension] ✓ Configured for ${result.installed} browser(s):`, result.browsers);
+    } else if (result.success) {
+      console.log('[Extension] No browsers detected yet - will auto-configure when installed');
+    }
+  }).catch(e => {
+    console.error('[Extension] Setup check failed:', e);
+  });
 })
 
 app.on('will-quit', () => {
@@ -388,6 +467,27 @@ ipcMain.on('hide-overlay', () => overlayWindow?.hide())
 // Dashboard Actions (CRUD)
 ipcMain.handle('get-all-credentials', () => getAllCredentials())
 ipcMain.handle('get-credentials-page', (event, { page, pageSize }) => getCredentialsPage(page, pageSize))
+
+ipcMain.handle('setup-extension', async () => {
+  try {
+    const result = await setupBrowserExtension();
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('open-extension-folder', () => {
+  const extensionPath = getExtensionPath();
+  shell.showItemInFolder(path.join(extensionPath, 'chromium'));
+  return { success: true };
+});
+
+ipcMain.handle('open-chrome-extensions', () => {
+  shell.openExternal('chrome://extensions');
+  return { success: true };
+});
+
 ipcMain.handle('add-credential', async (event, data) => {
   const existing = findCredential(data.domain, data.username);
   if (existing) {

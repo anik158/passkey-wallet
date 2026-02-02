@@ -1,0 +1,34 @@
+{
+    "manifest_version": 2,
+    "name": "PassKey Wallet Connector",
+    "version": "1.0.0",
+    "description": "Connects PassKey Wallet to your browser for automatic credential detection",
+    "permissions": [
+        "activeTab",
+        "tabs",
+        "nativeMessaging",
+        "<all_urls>"
+    ],
+    "background": {
+        "scripts": [
+            "background.js"
+        ]
+    },
+    "browser_action": {
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "passkey-wallet@passkey-wallet.com"
+        }
+    }
+}

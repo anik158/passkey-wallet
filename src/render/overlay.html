@@ -21,7 +21,7 @@
       </div>
 
       <div id="content">
-        <!-- Inject credentials here -->
+        <!-- Credentials will be injected here -->
       </div>
       <div class="footer-hints"
         style="margin-top: auto; padding-top: 10px; border-top: 1px solid #333; font-size: 0.75rem; color: #666; display: flex; justify-content: space-between;">
@@ -45,44 +45,115 @@
 
       contentEl.innerHTML = '' // Clear previous content
 
-      if (!data.username) {
-        // No credentials found
-        const noData = document.createElement('div');
-        noData.className = 'row';
-        noData.innerHTML = '<span class="value" style="color: #666; font-style: italic;">No details found</span>';
-        contentEl.appendChild(noData);
+      // Check if new format (credentials array)
+      if (data.credentials) {
+        handleNewFormat(data.credentials);
+      } else if (data.username) {
+        // Legacy format - single credential
+        handleSingleCredential({ username: data.username, password: data.password });
+      } else {
+        showNoCredentials();
+      }
+    })
+
+    function handleNewFormat(credentials) {
+      if (!credentials || credentials.length === 0) {
+        showNoCredentials();
         return;
       }
 
+      if (credentials.length === 1) {
+        handleSingleCredential(credentials[0]);
+      } else {
+        handleMultipleCredentials(credentials);
+      }
+    }
+
+    function showNoCredentials() {
+      contentEl.innerHTML = '<div class="row"><span class="value" style="color: #666; font-style: italic;">No details found</span></div>';
+    }
+
+    function handleSingleCredential(cred) {
       // User Row
       const userRow = document.createElement('div');
       userRow.className = 'row';
       userRow.innerHTML = `
-                <span class="label">User:</span>
-                <span class="value clickable">${data.username}</span>
-            `;
+        <span class="label">User:</span>
+        <span class="value clickable">${escapeHtml(cred.username)}</span>
+      `;
       userRow.querySelector('.value').onclick = () => {
-        window.api.copyToClipboard(data.username);
-        window.api.hideOverlay();
+        window.api.copyToClipboard(cred.username);
+        showCopyNotification('Username copied!');
       };
       contentEl.appendChild(userRow);
 
-      // Pass Row
+      // Pass Row - Copy without showing
       const passRow = document.createElement('div');
       passRow.className = 'row';
       passRow.innerHTML = `
-                <span class="label">Pass:</span>
-                <span class="value clickable masked">••••••••</span>
-            `;
-      const passVal = passRow.querySelector('.value');
-      passVal.onclick = () => {
-        passVal.textContent = data.password;
-        passVal.classList.remove('masked');
-        window.api.copyToClipboard(data.password);
-        setTimeout(() => window.api.hideOverlay(), 1200);
+        <span class="label">Pass:</span>
+        <button class="copy-pass-btn">📋 Copy Password</button>
+      `;
+      const copyBtn = passRow.querySelector('.copy-pass-btn');
+      copyBtn.onclick = () => {
+        window.api.copyToClipboard(cred.password);
+        copyBtn.textContent = '✓ Copied!';
+        copyBtn.style.background = '#28a745';
+        setTimeout(() => window.api.hideOverlay(), 1000);
       };
       contentEl.appendChild(passRow);
-    })
+    }
+
+    function handleMultipleCredentials(credentials) {
+      const header = document.createElement('div');
+      header.className = 'multi-header';
+      header.innerHTML = '<strong>Select Account:</strong>';
+      contentEl.appendChild(header);
+
+      credentials.forEach((cred, index) => {
+        const credDiv = document.createElement('div');
+        credDiv.className = 'credential-item';
+        credDiv.innerHTML = `
+          <div class="username-row">
+            <span class="username-text">${escapeHtml(cred.username)}</span>
+            <div class="actions">
+              <button class="copy-btn-small" data-type="username">📋 User</button>
+              <button class="copy-btn-small" data-type="password">📋 Pass</button>
+            </div>
+          </div>
+        `;
+
+        // Add event listeners
+        const buttons = credDiv.querySelectorAll('.copy-btn-small');
+        buttons.forEach(btn => {
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            const type = btn.dataset.type;
+            const text = type === 'username' ? cred.username : cred.password;
+            window.api.copyToClipboard(text);
+            btn.textContent = '✓';
+            btn.style.background = '#28a745';
+            setTimeout(() => {
+              if (type === 'password') {
+                window.api.hideOverlay();
+              }
+            }, type === 'password' ? 800 : 0);
+          };
+        });
+
+        contentEl.appendChild(credDiv);
+      });
+    }
+
+    function showCopyNotification(msg) {
+      console.log(msg);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
     // Close on Esc
     window.addEventListener('keydown', (e) => {

@@ -60,10 +60,38 @@ export function initDatabase(userDataPath, password) {
 
 // Common login redirects
 const DOMAIN_ALIASES = {
-  'login.microsoftonline.com': ['outlook.com', 'live.com', 'microsoft.com', 'office.com'],
-  'accounts.google.com': ['google.com', 'gmail.com', 'youtube.com'],
-  'amazon.com': ['aws.amazon.com', 'smile.amazon.com'],
-  'github.com': ['github.io']
+  // Google Services
+  'mail.google.com': ['google.com', 'gmail.com', 'accounts.google.com'],
+  'gmail.com': ['google.com', 'mail.google.com', 'accounts.google.com'],
+  'accounts.google.com': ['google.com', 'gmail.com', 'mail.google.com'],
+  'google.com': ['gmail.com', 'mail.google.com', 'accounts.google.com'],
+
+  // Microsoft Services
+  'login.microsoftonline.com': ['microsoft.com', 'outlook.com', 'live.com'],
+  'outlook.com': ['microsoft.com', 'live.com', 'login.microsoftonline.com'],
+  'outlook.live.com': ['microsoft.com', 'outlook.com', 'live.com'],
+  'login.live.com': ['microsoft.com', 'outlook.com', 'live.com'],
+  'microsoft.com': ['outlook.com', 'live.com', 'login.microsoftonline.com'],
+
+  // Facebook/Meta
+  'facebook.com': ['fb.com', 'm.facebook.com'],
+  'fb.com': ['facebook.com', 'm.facebook.com'],
+  'm.facebook.com': ['facebook.com', 'fb.com'],
+
+  // Amazon
+  'signin.aws.amazon.com': ['amazon.com', 'aws.amazon.com'],
+  'aws.amazon.com': ['amazon.com', 'signin.aws.amazon.com'],
+
+  // Apple
+  'appleid.apple.com': ['apple.com', 'icloud.com'],
+  'icloud.com': ['apple.com', 'appleid.apple.com'],
+
+  // GitHub
+  'github.com': ['gist.github.com'],
+
+  // Twitter/X
+  'twitter.com': ['x.com'],
+  'x.com': ['twitter.com'],
 };
 
 export function getCredentials(query) {
