@@ -1,0 +1,121 @@
+@echo off
+REM Multi-Browser Native Host Installer for PassKey Wallet (Windows)
+
+echo ==============================================
+echo PassKey Wallet - Native Host Installer
+echo ==============================================
+echo.
+
+REM Detect Node.js
+where node >nul 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo Error: Node.js not found in PATH!
+    echo Please install Node.js from https://nodejs.org
+    pause
+    exit /b 1
+)
+
+for /f "tokens=*" %%i in ('where node') do set NODE_PATH=%%i
+echo Found Node.js at: %NODE_PATH%
+
+for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
+echo Node version: %NODE_VERSION%
+echo.
+
+REM Set install directory
+set INSTALL_DIR=%LOCALAPPDATA%\PassKey Wallet
+set INSTALL_PATH=%INSTALL_DIR%\native-host.js
+
+REM Create directory
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+
+REM Copy native host with absolute Node path
+echo Creating native host wrapper...
+(
+    echo @echo off
+    echo "%NODE_PATH%" "%%~dp0native-host-impl.js" %%*
+) > "%INSTALL_DIR%\native-host.bat"
+
+copy "%~dp0native-host.js" "%INSTALL_DIR%\native-host-impl.js" >nul
+
+echo Native host installed to: %INSTALL_PATH%
+echo.
+
+REM Get extension ID
+set /p EXTENSION_ID="Please enter your extension ID from chrome://extensions: "
+
+if "%EXTENSION_ID%"=="" (
+    echo Error: Extension ID required
+    pause
+    exit /b 1
+)
+
+echo.
+echo Installing manifests for detected browsers...
+
+REM Chrome
+set CHROME_DIR=%LOCALAPPDATA%\Google\Chrome\User Data\NativeMessagingHosts
+if exist "%LOCALAPPDATA%\Google\Chrome" (
+    if not exist "%CHROME_DIR%" mkdir "%CHROME_DIR%"
+    (
+        echo {
+        echo   "name": "com.passkey_wallet.native",
+        echo   "description": "PassKey Wallet Native Messaging Host",
+        echo   "path": "%INSTALL_DIR:\=\\%\\native-host.bat",
+        echo   "type": "stdio",
+        echo   "allowed_origins": [
+        echo     "chrome-extension://%EXTENSION_ID%/"
+        echo   ]
+        echo }
+    ) > "%CHROME_DIR%\com.passkey_wallet.native.json"
+    echo   * Chrome
+)
+
+REM Edge
+set EDGE_DIR=%LOCALAPPDATA%\Microsoft\Edge\User Data\NativeMessagingHosts
+if exist "%LOCALAPPDATA%\Microsoft\Edge" (
+    if not exist "%EDGE_DIR%" mkdir "%EDGE_DIR%"
+    (
+        echo {
+        echo   "name": "com.passkey_wallet.native",
+        echo   "description": "PassKey Wallet Native Messaging Host",
+        echo   "path": "%INSTALL_DIR:\=\\%\\native-host.bat",
+        echo   "type": "stdio",
+        echo   "allowed_origins": [
+        echo     "chrome-extension://%EXTENSION_ID%/"
+        echo   ]
+        echo }
+    ) > "%EDGE_DIR%\com.passkey_wallet.native.json"
+    echo   * Edge
+)
+
+REM Brave
+set BRAVE_DIR=%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\NativeMessagingHosts
+if exist "%LOCALAPPDATA%\BraveSoftware" (
+    if not exist "%BRAVE_DIR%" mkdir "%BRAVE_DIR%"
+    (
+        echo {
+        echo   "name": "com.passkey_wallet.native",
+        echo   "description": "PassKey Wallet Native Messaging Host",
+        echo   "path": "%INSTALL_DIR:\=\\%\\native-host.bat",
+        echo   "type": "stdio",
+        echo   "allowed_origins": [
+        echo     "chrome-extension://%EXTENSION_ID%/"
+        echo   ]
+        echo }
+    ) > "%BRAVE_DIR%\com.passkey_wallet.native.json"
+    echo   * Brave
+)
+
+echo.
+echo Installation complete!
+echo.
+echo Installation details:
+echo   Node.js: %NODE_PATH% (%NODE_VERSION%)
+echo   Native host: %INSTALL_PATH%
+echo.
+echo Next steps:
+echo 1. Reload all extensions in their respective browsers
+echo 2. Extension errors should disappear
+echo.
+pause

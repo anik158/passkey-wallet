@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && electron-builder",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "load-extension": "node scripts/load-extension.js"
   },
   "devDependencies": {
     "electron": "^30.0.1",
@@ -40,7 +41,8 @@
       "dist-electron/**/*",
       "dist/**/*",
       "package.json",
-      "public/**/*"
+      "public/**/*",
+      "browser-extension/**/*"
     ],
     "publish": null,
     "linux": {

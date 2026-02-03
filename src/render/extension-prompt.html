@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Extension Setup</title>
+    <style>
+        :root {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --text-main: #e2e8f0;
+            --text-muted: #a0aec0;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --input-bg: rgba(45, 55, 72, 0.9);
+            --accent-cyan: #06b6d4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #06b6d4, #0891b2);
+            border-radius: 12px 12px 0 0;
+            animation: modalGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes modalGlow {
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .icon-container {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        }
+
+        .icon-container svg {
+            width: 32px;
+            height: 32px;
+            color: white;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+            font-size: 1.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .description {
+            background: var(--input-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .description p {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .description p:last-child {
+            margin-bottom: 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            color: white;
+            border-color: #06b6d4;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        }
+
+        button.primary:hover {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+            transform: translateY(-2px);
+        }
+
+        button.secondary {
+            background: var(--input-bg);
+            color: var(--text-main);
+        }
+
+        button.secondary:hover {
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent-cyan);
+        }
+
+        .checkbox-container label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="modal-content">
+        <div class="icon-container">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                </path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+        </div>
+
+        <h2>Browser Extension Setup</h2>
+        <p class="subtitle">PassKey Wallet works best with the browser extension</p>
+
+        <div class="description">
+            <p><strong>1.</strong> Go to browser extensions page → Enable "Developer mode" → "Load unpacked"</p>
+            <p><strong>2.</strong> Select the extension folder we'll open for you</p>
+            <p><strong>3.</strong> Copy extension ID and run the installer script</p>
+            <p style="margin-top: 12px; font-size: 0.85rem; opacity: 0.8">See Help menu for detailed instructions.</p>
+        </div>
+
+        <div class="button-group">
+            <button id="install-btn" class="primary">Open Extension Folder</button>
+            <button id="skip-btn" class="secondary">Skip</button>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="dont-show-again">
+            <label for="dont-show-again">Don't show this again</label>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        document.getElementById('install-btn').addEventListener('click', () => {
+            const dontShowAgain = document.getElementById('dont-show-again').checked;
+            ipcRenderer.send('extension-prompt-response', { action: 'install', dontShowAgain });
+        });
+
+        document.getElementById('skip-btn').addEventListener('click', () => {
+            const dontShowAgain = document.getElementById('dont-show-again').checked;
+            ipcRenderer.send('extension-prompt-response', { action: 'skip', dontShowAgain });
+        });
+    </script>
+</body>
+
+</html>

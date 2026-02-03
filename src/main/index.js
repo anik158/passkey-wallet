@@ -7,7 +7,9 @@ import { initDatabase, getCredentials, addCredential, getAllCredentials, deleteC
 import * as xlsx from 'xlsx'
 import { encryptData, decryptData } from './crypto.js'
 import fs from 'fs'
-import { setupBrowserExtension, getExtensionPath } from './extensionSetup.js'
+import { getExtensionPath } from './extensionSetup.js'
+import { promptExtensionInstall } from './extensionPrompt.js'
+import { startURLServer, stopURLServer, getCurrentURL } from './urlServer.js'
 import Store from 'electron-store';
 
 const store = new Store();
@@ -441,20 +443,23 @@ function startApp() {
 app.whenReady().then(async () => {
   createLoginWindow()
 
-  setupBrowserExtension().then(result => {
-    if (result.success && result.installed > 0) {
-      console.log(`[Extension] ✓ Configured for ${result.installed} browser(s):`, result.browsers);
-    } else if (result.success) {
-      console.log('[Extension] No browsers detected yet - will auto-configure when installed');
-    }
-  }).catch(e => {
-    console.error('[Extension] Setup check failed:', e);
+  // Start URL server for browser extension communication
+  startURLServer((url) => {
+    console.log('[Main] Received URL from extension:', url);
   });
+
+  // Show extension prompt after 3 seconds (unless user dismissed it)
+  setTimeout(() => {
+    promptExtensionInstall().catch(e => {
+      console.error('[Extension] Prompt error:', e);
+    });
+  }, 3000);
 })
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   if (autoLockInterval) clearInterval(autoLockInterval);
+  stopURLServer();
   closeDatabase(); // Ensure DB is closed on app exit
 })
 
@@ -468,25 +473,9 @@ ipcMain.on('hide-overlay', () => overlayWindow?.hide())
 ipcMain.handle('get-all-credentials', () => getAllCredentials())
 ipcMain.handle('get-credentials-page', (event, { page, pageSize }) => getCredentialsPage(page, pageSize))
 
-ipcMain.handle('setup-extension', async () => {
-  try {
-    const result = await setupBrowserExtension();
-    return result;
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
-});
 
-ipcMain.handle('open-extension-folder', () => {
-  const extensionPath = getExtensionPath();
-  shell.showItemInFolder(path.join(extensionPath, 'chromium'));
-  return { success: true };
-});
 
-ipcMain.handle('open-chrome-extensions', () => {
-  shell.openExternal('chrome://extensions');
-  return { success: true };
-});
+
 
 ipcMain.handle('add-credential', async (event, data) => {
   const existing = findCredential(data.domain, data.username);

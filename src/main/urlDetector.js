@@ -47,10 +47,26 @@ async function getChromeURLViaCDP() {
     }
 }
 
-function getLinuxBrowserURL() {
+async function getLinuxBrowserURL() {
+    // Check if we have a URL from browser extension
+    const { getCurrentURL } = await import('./urlServer.js');
+    const extensionURL = getCurrentURL();
+
+    if (extensionURL) {
+        try {
+            const url = new URL(extensionURL);
+            console.log('[URL Detector] From extension:', url.hostname);
+            return url.hostname.replace('www.', '');
+        } catch (e) {
+            // Invalid URL, fall through
+        }
+    }
+
+    // Note: xdotool requires X11 and doesn't work on all systems
+    // Browser extension is the recommended approach
+    console.log('[URL Detector] Linux: Use browser extension for URL detection');
     return null;
 }
-
 function getWaylandBrowserURL() {
     return null;
 }

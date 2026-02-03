@@ -19,6 +19,9 @@ function connectNative() {
         });
 
         console.log('[PassKey Wallet] Connected to native host');
+
+        // Send initial ping to keep connection alive
+        port.postMessage({ type: 'ping', timestamp: Date.now() });
     } catch (e) {
         console.error('[PassKey Wallet] Failed to connect:', e);
         setTimeout(connectNative, 5000);
