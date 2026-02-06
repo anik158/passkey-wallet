@@ -4,25 +4,21 @@ import fs from 'fs';
 
 let db;
 
-// Helper to normalize domains
+
 function normalizeDomain(input) {
   if (!input) return '';
   let domain = input.toLowerCase().trim();
 
-  // Remove protocol
   domain = domain.replace(/^https?:\/\//, '');
 
-  // Remove user/pass if present (basic)
-  // e.g. https://user:pass@example.com -> example.com
+
   if (domain.includes('@')) {
     domain = domain.split('@')[1];
   }
 
-  // Remove www.
   domain = domain.replace(/^www\./, '');
 
-  // Remove trailing paths
-  // example.com/login -> example.com
+
   if (domain.includes('/')) {
     domain = domain.split('/')[0];
   }
@@ -40,10 +36,9 @@ export function initDatabase(userDataPath, password) {
 
   db = new Database(dbPath);
 
-  // Set encryption key
   db.pragma(`key = '${password}'`);
 
-  // Verify encryption/ create table
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS credentials (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,38 +53,38 @@ export function initDatabase(userDataPath, password) {
   console.log('Database initialized at', dbPath);
 }
 
-// Common login redirects
+
 const DOMAIN_ALIASES = {
-  // Google Services
+
   'mail.google.com': ['google.com', 'gmail.com', 'accounts.google.com'],
   'gmail.com': ['google.com', 'mail.google.com', 'accounts.google.com'],
   'accounts.google.com': ['google.com', 'gmail.com', 'mail.google.com'],
   'google.com': ['gmail.com', 'mail.google.com', 'accounts.google.com'],
 
-  // Microsoft Services
+
   'login.microsoftonline.com': ['microsoft.com', 'outlook.com', 'live.com'],
   'outlook.com': ['microsoft.com', 'live.com', 'login.microsoftonline.com'],
   'outlook.live.com': ['microsoft.com', 'outlook.com', 'live.com'],
   'login.live.com': ['microsoft.com', 'outlook.com', 'live.com'],
   'microsoft.com': ['outlook.com', 'live.com', 'login.microsoftonline.com'],
 
-  // Facebook/Meta
+
   'facebook.com': ['fb.com', 'm.facebook.com'],
   'fb.com': ['facebook.com', 'm.facebook.com'],
   'm.facebook.com': ['facebook.com', 'fb.com'],
 
-  // Amazon
+
   'signin.aws.amazon.com': ['amazon.com', 'aws.amazon.com'],
   'aws.amazon.com': ['amazon.com', 'signin.aws.amazon.com'],
 
-  // Apple
+
   'appleid.apple.com': ['apple.com', 'icloud.com'],
   'icloud.com': ['apple.com', 'appleid.apple.com'],
 
-  // GitHub
+
   'github.com': ['gist.github.com'],
 
-  // Twitter/X
+
   'twitter.com': ['x.com'],
   'x.com': ['twitter.com'],
 };
@@ -102,36 +97,33 @@ export function getCredentials(query) {
 
   const lowerQuery = query.toLowerCase();
 
-  // Expand query with aliases
-  // If query is 'login.microsoftonline.com', we also want to match 'outlook.com', etc.
+
   const aliases = DOMAIN_ALIASES[lowerQuery] || [];
 
-  // Check if query implies a broader reverse alias (simple check)
-  // e.g. if query is 'outlook.com', we might not need to look for microsoftonline, 
-  // but usually it's the Login Page (query) -> Saved Cred (target).
+
 
   const targets = [lowerQuery, ...aliases];
 
-  // Fuzzy match logic
+
   return allCreds.filter(cred => {
     const domain = cred.domain.toLowerCase();
 
-    // Check against all possible targets (query + aliases)
+
     return targets.some(target => {
-      // 1. Exact match
+
       if (domain === target) return true;
-      // 2. Domain contains target
+
       if (domain.includes(target)) return true;
-      // 3. Target contains domain
+
       if (target.includes(domain)) return true;
 
-      // 4. Smart Title Match / Base Match
+
       const domainBase = domain.split('.')[0];
       if (domainBase.length > 2 && target.includes(domainBase)) {
         return true;
       }
 
-      // 5. Token Match (e.g. "Google Account" -> "google.com")
+
       const tokens = target.split(/[\s\-_]+/);
       for (const token of tokens) {
         if (token.length > 3 && domain.includes(token)) {
@@ -142,7 +134,7 @@ export function getCredentials(query) {
       return false;
     });
   }).sort((a, b) => {
-    // Prioritize exact/better matches
+
     if (targets.includes(a.domain)) return -1;
     return 0;
   });
@@ -195,10 +187,7 @@ export function deleteAllCredentials() {
 }
 
 export function updateCredential(id, username, password) {
-  // We aren't updating domain currently in UI, but if we did, we'd normalize it too.
-  // The current UI sends { id, domain, username, password } but domain is disabled.
-  // If we enable domain edit later, we should handle it.
-  // For now the SQL only updates username/password.
+
   if (!db) throw new Error('DB not initialized');
   return db.prepare('UPDATE credentials SET username = ?, password = ? WHERE id = ?').run(username, password, id);
 }
@@ -237,8 +226,7 @@ export function bulkInsertCredentials(rows) {
       const existing = checkStmt.get(cleanDomain, cred.username);
 
       if (existing) {
-        // Update existing entry (Upsert behavior) ensures we don't get duplicates
-        // and that we update passwords if they changed in the imported file.
+
         updateStmt.run(cred.password, existing.id);
       } else {
         insertStmt.run(cleanDomain, cred.username, cred.password);

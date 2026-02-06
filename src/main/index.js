@@ -231,7 +231,17 @@ function createDashboardWindow() {
 
   dashboardWindow.once('ready-to-show', () => {
     dashboardWindow.show()
+    resetActivityTimer(); // Start fresh on dashboard show
   })
+
+  // Track user activity in dashboard
+  dashboardWindow.webContents.on('before-input-event', () => {
+    resetActivityTimer();
+  });
+
+  dashboardWindow.on('focus', () => {
+    resetActivityTimer();
+  });
 
   dashboardWindow.on('closed', () => {
     dashboardWindow = null
@@ -302,28 +312,40 @@ ipcMain.handle('login-attempt', async (event, password) => {
 
 const CHECK_INTERVAL_MS = 10000; // Check idle every 10s
 let autoLockInterval = null;
+let lastActivityTime = Date.now();
+
+function resetActivityTimer() {
+  lastActivityTime = Date.now();
+}
 
 function startAutoLockTimer() {
   if (autoLockInterval) clearInterval(autoLockInterval);
 
   autoLockInterval = setInterval(() => {
     // If DB is already closed/locked, no need to check
-    // We can check if loginWindow is visible or dashboard is null as a proxy
-    if (!dashboardWindow && loginWindow) return; // Already locked logic-ish
-
-    const systemIdleSeconds = powerMonitor.getSystemIdleTime();
+    if (!dashboardWindow && loginWindow) return;
 
     const lockMinutes = store.get('autoLockMinutes', 60);
-    const lockSeconds = lockMinutes * 60;
+    const lockMilliseconds = lockMinutes * 60 * 1000;
+    const timeSinceActivity = Date.now() - lastActivityTime;
 
-    if (systemIdleSeconds >= lockSeconds) {
-      console.log(`System idle for ${systemIdleSeconds}s. Locking app.`);
+    if (timeSinceActivity >= lockMilliseconds) {
+      console.log(`No activity for ${Math.floor(timeSinceActivity / 1000)}s (${lockMinutes} min threshold). Locking app.`);
       lockApp();
     }
   }, CHECK_INTERVAL_MS);
 }
 
 function lockApp() {
+  // Show Login FIRST to prevent window-all-closed from quitting app
+  if (!loginWindow) {
+    createLoginWindow();
+  }
+
+  // ensure it's ready/shown before destroying dashboard
+  loginWindow.show();
+  loginWindow.focus();
+
   if (dashboardWindow) {
     dashboardWindow.destroy(); // Force close
     dashboardWindow = null;
@@ -335,17 +357,6 @@ function lockApp() {
 
   // Close DB connection
   closeDatabase(); // Ensure this is exported/imported from db.js
-
-  // Clear any cached data in memory if we had any (we mostly trust GC + DB close)
-
-  // Show Login
-  if (!loginWindow) {
-    createLoginWindow();
-    loginWindow.show();
-  } else {
-    loginWindow.show();
-    loginWindow.focus();
-  }
 }
 
 /**
@@ -538,70 +549,69 @@ ipcMain.handle('import-from-excel', async () => {
       const workbook = xlsx.read(buffer, { type: 'buffer' })
       const sheetName = workbook.SheetNames[0]
       const sheet = workbook.Sheets[sheetName]
-      const rawData = xlsx.utils.sheet_to_json(sheet)
+      const rawData = xlsx.utils.sheet_to_json(sheet, { header: 1 })
 
       if (!rawData || rawData.length === 0) {
         return { success: false, message: 'File appears empty' }
       }
 
-      // Smart Column Mapping
-      // We look for keys that resemble 'domain', 'username', 'password'
-      const firstRow = rawData[0];
-      const keys = Object.keys(firstRow);
+      const header = rawData[0]
+      const domainIdx = header.indexOf('Domain')
+      const userIdx = header.indexOf('Username')
+      const passIdx = header.indexOf('Password')
 
-      const findKey = (candidates) => keys.find(k => candidates.some(c => k.toLowerCase().includes(c)));
-
-      const domainKey = findKey(['domain', 'site', 'url', 'web', 'link']);
-      const userKey = findKey(['user', 'login', 'email', 'account']);
-      const passKey = findKey(['pass', 'pwd', 'key', 'secret', 'code']);
-
-      if (!domainKey || !userKey || !passKey) {
+      if (domainIdx === -1 || userIdx === -1 || passIdx === -1) {
         return {
           success: false,
-          message: `Could not identify columns automatically. Found headers: ${keys.join(', ')}. Need columns like 'Domain', 'Username', 'Password'.`
+          message: 'Excel file must have columns: Domain, Username, Password'
         }
       }
 
-      const validRows = [];
-      let skippedCount = 0;
+      const validRows = []
+      const seenInFile = new Set()
+      const fileDuplicates = []
+      let skippedCount = 0
 
-      for (const row of rawData) {
-        const d = row[domainKey];
-        const u = row[userKey];
-        const p = row[passKey];
+      for (let i = 1; i < rawData.length; i++) {
+        const row = rawData[i]
+        const domain = row[domainIdx]?.toString().trim()
+        const username = row[userIdx]?.toString().trim()
+        const password = row[passIdx]?.toString().trim()
 
-        if (d && u && p) {
-          validRows.push({ domain: String(d), username: String(u), password: String(p) });
+        if (domain && username && password) {
+          const key = `${domain.toLowerCase()}|${username.toLowerCase()}`
+          if (seenInFile.has(key)) {
+            fileDuplicates.push(`${domain} (${username})`)
+            skippedCount++
+          } else {
+            seenInFile.add(key)
+            validRows.push({ domain, username, password })
+          }
         } else {
-          skippedCount++;
+          skippedCount++
         }
       }
 
       if (validRows.length > 0) {
+        const dbDuplicates = checkDuplicates(validRows)
 
-        // 1. Check for duplicates first
-        const duplicates = checkDuplicates(validRows);
-        if (duplicates.length > 0) {
-          const message = `Found ${duplicates.length} duplicate entries (e.g., ${duplicates[0]}).\n\nDo you want to overwrite them with the new passwords?`;
-          const { response } = await dialog.showMessageBox({
-            type: 'question',
-            buttons: ['Overwrite & Import', 'Cancel'],
-            defaultId: 0,
-            title: 'Duplicates Found',
-            message: message,
-            detail: 'Existing passwords for these accounts will be updated.'
-          });
-
-          if (response === 1) { // Cancel (Index 1)
-            return { success: false, message: 'Import cancelled by user.' };
+        const totalDuplicates = fileDuplicates.length + dbDuplicates.length
+        if (totalDuplicates > 0) {
+          return {
+            success: false,
+            requiresConfirmation: true,
+            duplicates: {
+              total: totalDuplicates,
+              file: fileDuplicates,
+              db: dbDuplicates
+            },
+            validRows: validRows
           }
         }
 
-        bulkInsertCredentials(validRows);
-        // Refresh dashboard if open
+        bulkInsertCredentials(validRows)
         if (dashboardWindow) {
-          // We might want to notify renderer to refresh, 
-          // but since this is an invoke, render can refresh after await
+          dashboardWindow.webContents.send('credentials-updated')
         }
         return { success: true, count: validRows.length, skipped: skippedCount }
       }
@@ -614,6 +624,25 @@ ipcMain.handle('import-from-excel', async () => {
     }
   }
   return { cancelled: true }
+})
+
+ipcMain.handle('force-import-excel', async (event, validRows) => {
+  try {
+    if (!validRows || !Array.isArray(validRows)) {
+      return { success: false, message: 'Invalid data' }
+    }
+
+    // DB Duplicates logic in bulkInsertCredentials handles insert (conflict ignored or replaced? verify db.js)
+    bulkInsertCredentials(validRows)
+
+    if (dashboardWindow) {
+      dashboardWindow.webContents.send('credentials-updated')
+    }
+    return { success: true, count: validRows.length }
+  } catch (error) {
+    console.error(error)
+    return { success: false, message: error.message }
+  }
 })
 
 // Secure Backup Handlers

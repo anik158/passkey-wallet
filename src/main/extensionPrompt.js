@@ -69,11 +69,6 @@ async function openExtensionInstallGuide() {
     // Show chromium folder in file manager
     const chromiumPath = path.join(extensionPath, 'chromium');
     shell.showItemInFolder(chromiumPath);
-
-    // Wait a bit then open chrome extensions page
-    setTimeout(() => {
-        shell.openExternal('chrome://extensions');
-    }, 500);
 }
 
 export { openExtensionInstallGuide };

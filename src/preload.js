@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
 
     // Import/Export
     importFromExcel: () => ipcRenderer.invoke('import-from-excel'),
+    forceImportFromExcel: (validRows) => ipcRenderer.invoke('force-import-excel', validRows),
 
     // Secure Backup
     exportEncrypted: (password) => ipcRenderer.invoke('export-encrypted', password),
