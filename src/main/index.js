@@ -3,7 +3,21 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { getBrowserURL } from './urlDetector.js';
 import activeWin from 'active-win'
-import { initDatabase, getCredentials, addCredential, getAllCredentials, deleteCredential, deleteAllCredentials, updateCredential, bulkInsertCredentials, getCredentialsPage, closeDatabase, checkDuplicates, findCredential } from './db.js'
+import {
+  initDatabase,
+  closeDatabase,
+  getCredentials,
+  getAllCredentials,
+  getCredentialsPage,
+  addCredential,
+  deleteCredential,
+  deleteAllCredentials,
+  updateCredential,
+  findCredential,
+  checkDuplicates,
+  bulkInsertCredentials,
+  normalizeDomain
+} from './db.js'
 import * as xlsx from 'xlsx'
 import { encryptData, decryptData } from './crypto.js'
 import fs from 'fs'
@@ -213,9 +227,11 @@ function createDashboardWindow() {
       createTray();
     }
 
-    if (false && !loginWindow) {
+    if (!loginWindow) {
       createLoginWindow();
-    } else {
+    }
+
+    if (loginWindow) {
       loginWindow.show();
       loginWindow.focus();
     }
@@ -224,14 +240,14 @@ function createDashboardWindow() {
   const devServerUrl = process.env.VITE_DEV_SERVER_URL
   if (devServerUrl && !app.isPackaged) {
     dashboardWindow.loadURL(`${devServerUrl}src/render/dashboard.html`)
-    // dashboardWindow.webContents.openDevTools() // Debug mode ENABLED
+    dashboardWindow.webContents.openDevTools() // Debug mode ENABLED
   } else {
     dashboardWindow.loadFile(`${__dirname}/../dist/src/render/dashboard.html`)
   }
 
   dashboardWindow.once('ready-to-show', () => {
     dashboardWindow.show()
-    resetActivityTimer(); // Start fresh on dashboard show
+    resetActivityTimer();
   })
 
   // Track user activity in dashboard
@@ -483,28 +499,14 @@ ipcMain.on('hide-overlay', () => overlayWindow?.hide())
 // Dashboard Actions (CRUD)
 ipcMain.handle('get-all-credentials', () => getAllCredentials())
 ipcMain.handle('get-credentials-page', (event, { page, pageSize }) => getCredentialsPage(page, pageSize))
+ipcMain.handle('find-credential', (event, { domain, username }) => findCredential(domain, username))
 
 
 
 
 
 ipcMain.handle('add-credential', async (event, data) => {
-  const existing = findCredential(data.domain, data.username);
-  if (existing) {
-    const { response } = await dialog.showMessageBox({
-      type: 'question',
-      buttons: ['Overwrite', 'Cancel'],
-      defaultId: 0,
-      title: 'Duplicate Credential',
-      message: `A password for ${data.domain} (${data.username}) already exists.\nDo you want to overwrite it?`,
-      detail: 'The existing password will be updated.'
-    });
-
-    if (response === 1) return { cancelled: true }; // Cancelled
-
-    // Overwrite
-    return updateCredential(existing.id, data.username, data.password);
-  }
+  // Renderer handles duplicate checking
   return addCredential(data.domain, data.username, data.password);
 })
 ipcMain.handle('delete-credential', (event, id) => deleteCredential(id))
@@ -517,7 +519,7 @@ ipcMain.handle('delete-all-credentials', () => {
     return { success: false, message: err.message }
   }
 })
-ipcMain.handle('update-credential', (event, data) => updateCredential(data.id, data.username, data.password))
+ipcMain.handle('update-credential', (event, data) => updateCredential(data.id, data.domain, data.username, data.password))
 
 // Import / Export
 // Import
@@ -579,13 +581,15 @@ ipcMain.handle('import-from-excel', async () => {
         const password = row[passIdx]?.toString().trim()
 
         if (domain && username && password) {
-          const key = `${domain.toLowerCase()}|${username.toLowerCase()}`
+          const normalizedDomain = normalizeDomain(domain);
+          const key = `${normalizedDomain}|${username.toLowerCase()}`
           if (seenInFile.has(key)) {
-            fileDuplicates.push(`${domain} (${username})`)
+            fileDuplicates.push(`${normalizedDomain} (${username})`)
             skippedCount++
           } else {
             seenInFile.add(key)
-            validRows.push({ domain, username, password })
+            // Store with NORMALIZED domain to match what DB will use
+            validRows.push({ domain: normalizedDomain, username, password })
           }
         } else {
           skippedCount++
@@ -596,7 +600,9 @@ ipcMain.handle('import-from-excel', async () => {
         const dbDuplicates = checkDuplicates(validRows)
 
         const totalDuplicates = fileDuplicates.length + dbDuplicates.length
+
         if (totalDuplicates > 0) {
+          console.log('[EXCEL DEBUG] Returning requiresConfirmation=true');
           return {
             success: false,
             requiresConfirmation: true,
@@ -713,19 +719,14 @@ ipcMain.handle('restore-backup', async (event, { filePath, password }) => {
       // 1. Check for duplicates
       const duplicates = checkDuplicates(decryptedData);
       if (duplicates.length > 0) {
-        const message = `Found ${duplicates.length} duplicate entries in backup (e.g., ${duplicates[0]}).\n\nDo you want to overwrite existing passwords?`;
-        const { response } = await dialog.showMessageBox({
-          type: 'question',
-          buttons: ['Overwrite & Restore', 'Cancel'],
-          defaultId: 0,
-          title: 'Backup Duplicates',
-          message: message,
-          detail: 'Existing passwords will be updated to match the backup.'
-        });
-
-        if (response === 1) { // Cancel
-          return { success: false, message: 'Restore cancelled by user.' };
-        }
+        // Return duplicate info for renderer to handle
+        return {
+          success: false,
+          requiresConfirmation: true,
+          duplicates: duplicates,
+          decryptedData: decryptedData,
+          count: decryptedData.length
+        };
       }
 
       bulkInsertCredentials(decryptedData);
@@ -748,6 +749,29 @@ ipcMain.handle('restore-backup', async (event, { filePath, password }) => {
   }
 })
 
+// Force restore after user confirms duplicates
+ipcMain.handle('force-restore-backup', async (event, decryptedData) => {
+  try {
+    if (!decryptedData || !Array.isArray(decryptedData)) {
+      return { success: false, message: 'Invalid data' };
+    }
+
+    bulkInsertCredentials(decryptedData);
+
+    if (dashboardWindow) {
+      dashboardWindow.webContents.send('refresh-data');
+      dashboardWindow.focus();
+    } else {
+      createDashboardWindow();
+    }
+
+    return { success: true, count: decryptedData.length };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.message };
+  }
+})
+
 // Settings IPC
 ipcMain.handle('get-settings', () => {
   return {
@@ -766,4 +790,8 @@ ipcMain.handle('save-settings', (event, settings) => {
 
 ipcMain.handle('lock-app', () => {
   lockApp();
+});
+
+ipcMain.on('reset-activity', () => {
+  resetActivityTimer();
 });

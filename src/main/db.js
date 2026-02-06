@@ -5,7 +5,7 @@ import fs from 'fs';
 let db;
 
 
-function normalizeDomain(input) {
+export function normalizeDomain(input) {
   if (!input) return '';
   let domain = input.toLowerCase().trim();
 
@@ -186,10 +186,10 @@ export function deleteAllCredentials() {
   return { success: true, count };
 }
 
-export function updateCredential(id, username, password) {
-
+export function updateCredential(id, domain, username, password) {
   if (!db) throw new Error('DB not initialized');
-  return db.prepare('UPDATE credentials SET username = ?, password = ? WHERE id = ?').run(username, password, id);
+  const cleanDomain = normalizeDomain(domain);
+  return db.prepare('UPDATE credentials SET domain = ?, username = ?, password = ? WHERE id = ?').run(cleanDomain, username, password, id);
 }
 
 export function findCredential(domain, username) {

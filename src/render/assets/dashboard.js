@@ -35,7 +35,8 @@ function customConfirm(message, title = 'Confirm') {
         const dialogConfirm = document.getElementById('dialogConfirm');
 
         dialogTitle.textContent = title;
-        dialogMessage.textContent = message;
+        // Convert \n to <br> for proper line breaks
+        dialogMessage.innerHTML = message.replace(/\\n/g, '<br>');
         dialogCancel.style.display = 'inline-block';
         dialogConfirm.textContent = 'Confirm';
 
@@ -66,6 +67,11 @@ let isEditing = false;
 let currentPage = 1;
 const PAGE_SIZE = 10;
 let totalItems = 0;
+
+// Track user activity to prevent auto-lock during active use
+document.addEventListener('click', () => {
+    window.api.resetActivity();
+});
 
 // Initialize
 async function loadCredentials() {
@@ -112,11 +118,10 @@ async function loadCredentials() {
             editBtn.onclick = () => {
                 isEditing = true;
                 document.getElementById('modalTitle').textContent = 'Edit Credential';
-                document.getElementById('editId').value = editBtn.dataset.id;
-                document.getElementById('inpDomain').value = editBtn.dataset.domain;
-                // Domain is now editable - no longer disabled
-                document.getElementById('inpUsername').value = editBtn.dataset.user;
-                document.getElementById('inpPassword').value = editBtn.dataset.pass;
+                document.getElementById('editId').value = cred.id;
+                document.getElementById('inpDomain').value = cred.domain;
+                document.getElementById('inpUser').value = cred.username;
+                document.getElementById('inpPass').value = cred.password;
                 modal.classList.add('active');
                 document.getElementById('inpDomain').focus();
             };
@@ -238,6 +243,7 @@ document.getElementById('btnCancel').onclick = () => {
     modal.classList.remove('active');
 };
 
+
 form.onsubmit = async (e) => {
     e.preventDefault();
     const domain = document.getElementById('inpDomain').value.trim();
@@ -246,40 +252,51 @@ form.onsubmit = async (e) => {
 
     if (!domain || !username || !password) return;
 
-    if (isEditing) {
-        // If you're editing, get the ID
-        const id = document.getElementById('editId').value;
-        // Before saving, we need to check:
-        // The user might have changed the domain/username in the edit form
-        // If they did, we must check for duplicates
-        // findCredential returns null or the found credential
+    // Check for duplicates using renderer-side custom dialog
+    const existing = await window.api.findCredential(domain, username);
 
-        // Check if domain+username combo already exists
-        const existing = await window.api.findCredential(domain, username);
-        if (existing && (!isEditing || existing.id !== parseInt(id))) {
-            const overwrite = await customConfirm(`A password for ${domain} (${username}) already exists. Do you want to overwrite it?\n\nThe existing password will be updated.`, 'Duplicate Credential');
+    if (isEditing) {
+        const id = document.getElementById('editId').value;
+
+        // If editing and domain/username changed to match another existing entry
+        if (existing && existing.id !== parseInt(id)) {
+            const overwrite = await customConfirm(
+                `A password for ${domain} (${username}) already exists.\\nDo you want to overwrite it?\\n\\nThe existing password will be updated.`,
+                'Duplicate Credential'
+            );
             if (!overwrite) {
                 modal.classList.remove('active');
                 return;
             }
-            await window.api.updateCredential(existing.id, username, password);
+            await window.api.updateCredential({ id: existing.id, domain, username, password });
             await customAlert('Password updated!', 'Success');
-        } else if (isEditing) {
-            await window.api.updateCredential(id, username, password);
-            await customAlert('Password updated successfully!', 'Success');
         } else {
-            const data = { domain, username, password };
-            await window.api.addCredential(data);
-            await customAlert('Password added successfully!', 'Success');
+            // Normal edit (no conflict)
+            await window.api.updateCredential({ id, domain, username, password });
+            await customAlert('Password updated successfully!', 'Success');
         }
     } else {
-        const data = { domain, username, password };
-        await window.api.addCredential(data);
-        await customAlert('Password added successfully!', 'Success');
+        // Adding new credential
+        if (existing) {
+            const overwrite = await customConfirm(
+                `A password for ${domain} (${username}) already exists.\\nDo you want to overwrite it?\\n\\nThe existing password will be updated.`,
+                'Duplicate Credential'
+            );
+            if (!overwrite) {
+                modal.classList.remove('active');
+                return;
+            }
+            await window.api.updateCredential({ id: existing.id, domain, username, password });
+            await customAlert('Password updated!', 'Success');
+        } else {
+            const result = await window.api.addCredential({ domain, username, password });
+            if (!result || !result.cancelled) {
+                await customAlert('Password added successfully!', 'Success');
+            }
+        }
     }
 
     console.log('Saved');
-
     modal.classList.remove('active');
     loadCredentials();
 };
@@ -371,9 +388,26 @@ document.getElementById('btnRestore').onclick = async () => {
     const password = await requestPassword('Restore Password', 'Enter the password used to encrypt this backup:');
     if (!password) return;
 
-    // Restore restores from the given file + password
     const res = await window.api.restoreBackup(filePath, password);
-    if (res.success) {
+
+    if (res.requiresConfirmation) {
+        // Show custom dialog for duplicates
+        const { duplicates, decryptedData } = res;
+        let msg = `Found ${duplicates.length} duplicate(s) in backup:\\n\\n`;
+        msg += `${duplicates.slice(0, 5).join('\\n')}`;
+        if (duplicates.length > 5) msg += `\\n... and ${duplicates.length - 5} more`;
+        msg += `\\n\\nDo you want to overwrite existing passwords?`;
+
+        if (await customConfirm(msg, 'Backup Duplicates')) {
+            const forceRes = await window.api.forceRestoreBackup(decryptedData);
+            if (forceRes.success) {
+                await customAlert(`Restored ${forceRes.count} passwords!`, 'Restore Complete');
+                loadCredentials();
+            } else {
+                await customAlert('Restore failed: ' + forceRes.message, 'Restore Error');
+            }
+        }
+    } else if (res.success) {
         await customAlert(`Restored ${res.count} passwords!`, 'Restore Complete');
         loadCredentials();
     } else {
