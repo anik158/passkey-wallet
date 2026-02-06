@@ -65,13 +65,7 @@ async function openExtensionInstallGuide() {
     if (isDev) {
         extensionPath = path.join(app.getAppPath(), 'browser-extension');
     } else {
-        if (process.platform === 'darwin') {
-            extensionPath = path.join(process.resourcesPath, 'browser-extension');
-        } else if (process.platform === 'win32') {
-            extensionPath = path.join(process.resourcesPath, 'browser-extension');
-        } else {
-            extensionPath = path.join(process.resourcesPath, 'browser-extension');
-        }
+        extensionPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'browser-extension');
     }
 
     const fs = (await import('fs')).default;

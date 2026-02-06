@@ -45,6 +45,9 @@
       "browser-extension/**/*"
     ],
     "publish": null,
+    "asarUnpack": [
+      "browser-extension/**/*"
+    ],
     "linux": {
       "target": [
         "AppImage",
