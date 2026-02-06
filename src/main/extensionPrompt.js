@@ -59,14 +59,29 @@ ipcMain.on('extension-prompt-response', async (event, { action, dontShowAgain })
 });
 
 async function openExtensionInstallGuide() {
-    let extensionPath = path.join(process.resourcesPath, 'browser-extension');
     const isDev = !app.isPackaged;
+    let extensionPath;
 
     if (isDev) {
         extensionPath = path.join(app.getAppPath(), 'browser-extension');
+    } else {
+        if (process.platform === 'darwin') {
+            extensionPath = path.join(process.resourcesPath, 'browser-extension');
+        } else if (process.platform === 'win32') {
+            extensionPath = path.join(process.resourcesPath, 'browser-extension');
+        } else {
+            extensionPath = path.join(process.resourcesPath, 'browser-extension');
+        }
     }
 
-    // Show chromium folder in file manager
+    const fs = (await import('fs')).default;
+    if (!fs.existsSync(extensionPath)) {
+        console.error('Extension folder not found at:', extensionPath);
+        console.error('process.resourcesPath:', process.resourcesPath);
+        console.error('app.getAppPath():', app.getAppPath());
+        extensionPath = path.join(path.dirname(app.getPath('exe')), 'resources', 'browser-extension');
+    }
+
     const chromiumPath = path.join(extensionPath, 'chromium');
     shell.showItemInFolder(chromiumPath);
 }
