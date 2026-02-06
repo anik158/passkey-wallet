@@ -33,7 +33,7 @@ export async function promptExtensionInstall() {
     const isDev = !app.isPackaged;
     const htmlPath = isDev
         ? `http://localhost:5173/src/render/extension-prompt.html`
-        : `file://${path.join(__dirname, '../dist/src/render/extension-prompt.html')}`;
+        : `file://${path.join(__dirname, '../dist/extension-prompt.html')}`;
 
     extensionPromptWindow.loadURL(htmlPath);
 

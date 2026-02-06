@@ -34,6 +34,7 @@ export default defineConfig({
         dashboard: path.resolve(__dirname, 'src/render/dashboard.html'),
         overlay: path.resolve(__dirname, 'src/render/overlay.html'),
         login: path.resolve(__dirname, 'src/render/login.html'),
+        'extension-prompt': path.resolve(__dirname, 'src/render/extension-prompt.html'),
       }
     }
   }
