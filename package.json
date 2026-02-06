@@ -46,7 +46,7 @@
     ],
     "publish": null,
     "asarUnpack": [
-      "browser-extension/**/*"
+      "browser-extension"
     ],
     "linux": {
       "target": [
