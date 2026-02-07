@@ -41,7 +41,18 @@ copy "%~dp0native-host.js" "%INSTALL_DIR%\native-host-impl.js" >nul
 echo Native host installed to: %INSTALL_PATH%
 echo.
 
-REM Get extension ID
+REM Browser Selection
+echo.
+echo Which browser are you installing for?
+echo 1) Chromium-based (Chrome, Edge, Brave, etc.)
+echo 2) Firefox
+set /p BROWSER_SELECT="Select [1-2]: "
+
+if "%BROWSER_SELECT%"=="2" goto firefox_setup
+
+:chromium_setup
+echo.
+echo --- Chromium Setup ---
 set /p EXTENSION_ID="Please enter your extension ID from chrome://extensions: "
 
 if "%EXTENSION_ID%"=="" (
@@ -106,7 +117,38 @@ if exist "%LOCALAPPDATA%\BraveSoftware" (
     ) > "%BRAVE_DIR%\com.passkey_wallet.native.json"
     echo   * Brave
 )
+goto install_complete
 
+:firefox_setup
+echo.
+echo --- Firefox Setup ---
+set FIREFOX_MANIFEST_JSON=%INSTALL_DIR%\com.passkey_wallet.native.json
+set FIREFOX_ID=passkey-wallet@passkey-wallet.com
+
+(
+    echo {
+    echo   "name": "com.passkey_wallet.native",
+    echo   "description": "PassKey Wallet Native Messaging Host",
+    echo   "path": "%INSTALL_DIR:\=\\%\\native-host.bat",
+    echo   "type": "stdio",
+    echo   "allowed_extensions": [
+    echo     "%FIREFOX_ID%"
+    echo   ]
+    echo }
+) > "%FIREFOX_MANIFEST_JSON%"
+
+echo Created manifest at: %FIREFOX_MANIFEST_JSON%
+
+REM Add Registry Key
+echo Adding Registry Key...
+reg add "HKCU\Software\Mozilla\NativeMessagingHosts\com.passkey_wallet.native" /ve /t REG_SZ /d "%FIREFOX_MANIFEST_JSON%" /f >nul
+echo   * Registry Key Added
+
+echo.
+echo Note: For Firefox, you must install the packaged extension (.xpi).
+echo Run 'browser-extension\package-firefox.bat' to create it.
+
+:install_complete
 echo.
 echo Installation complete!
 echo.
@@ -115,7 +157,7 @@ echo   Node.js: %NODE_PATH% (%NODE_VERSION%)
 echo   Native host: %INSTALL_PATH%
 echo.
 echo Next steps:
-echo 1. Reload all extensions in their respective browsers
-echo 2. Extension errors should disappear
+echo 1. Ensure the extension is installed in your browser
+echo 2. Reload the extension
 echo.
 pause

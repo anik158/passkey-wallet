@@ -59,24 +59,33 @@ chmod +x "$INSTALL_PATH"
 echo "Native host installed to: $INSTALL_PATH"
 echo ""
 
-# Get extension ID
-echo "Please enter your extension ID from chrome://extensions"
-echo "(It looks like: phiaelcmikdenbehmknbndahlipoepbj)"
-read -p "Extension ID: " EXTENSION_ID
+# Browser Selection
+echo "Which browser are you installing for?"
+echo "1) Chromium-based (Chrome, Edge, Brave, etc.)"
+echo "2) Firefox"
+read -p "Select [1-2]: " BROWSER_SELECT
 
-if [ -z "$EXTENSION_ID" ]; then
-  echo "Error: Extension ID required"
-  exit 1
-fi
+if [ "$BROWSER_SELECT" == "1" ]; then
+  # Chromium Flow
+  echo ""
+  echo "--- Chromium Setup ---"
+  echo "Please enter your extension ID from chrome://extensions"
+  echo "(It looks like: phiaelcmikdenbehmknbndahlipoepbj)"
+  read -p "Extension ID: " EXTENSION_ID
 
-# Function to create manifest for a browser
-create_manifest() {
-  local manifest_dir="$1"
-  local browser_name="$2"
-  
-  mkdir -p "$manifest_dir"
-  
-  cat > "$manifest_dir/com.passkey_wallet.native.json" << EOF
+  if [ -z "$EXTENSION_ID" ]; then
+    echo "Error: Extension ID required"
+    exit 1
+  fi
+
+  # Function to create manifest for a browser
+  create_manifest() {
+    local manifest_dir="$1"
+    local browser_name="$2"
+    
+    mkdir -p "$manifest_dir"
+    
+    cat > "$manifest_dir/com.passkey_wallet.native.json" << EOF
 {
   "name": "com.passkey_wallet.native",
   "description": "PassKey Wallet Native Messaging Host",
@@ -87,46 +96,47 @@ create_manifest() {
   ]
 }
 EOF
-  
-  if [ -f "$manifest_dir/com.passkey_wallet.native.json" ]; then
-    echo "  ✓ $browser_name"
-  fi
-}
+    
+    if [ -f "$manifest_dir/com.passkey_wallet.native.json" ]; then
+      echo "  ✓ $browser_name"
+    fi
+  }
 
-echo ""
-echo "Installing manifests for detected browsers..."
-
-# Chrome
-if [ -d "$HOME/.config/google-chrome" ]; then
-  create_manifest "$HOME/.config/google-chrome/NativeMessagingHosts" "Chrome"
-fi
-
-# Brave
-if [ -d "$HOME/.config/BraveSoftware/Brave-Browser" ]; then
-  create_manifest "$HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts" "Brave"
-fi
-
-# Edge
-if [ -d "$HOME/.config/microsoft-edge" ]; then
-  create_manifest "$HOME/.config/microsoft-edge/NativeMessagingHosts" "Edge"
-fi
-
-# Chromium
-if [ -d "$HOME/.config/chromium" ]; then
-  create_manifest "$HOME/.config/chromium/NativeMessagingHosts" "Chromium"
-fi
-
-# Firefox (different manifest format)
-if [ -d "$HOME/.mozilla" ]; then
-  FIREFOX_MANIFEST_DIR="$HOME/.mozilla/native-messaging-hosts"
-  mkdir -p "$FIREFOX_MANIFEST_DIR"
-  
   echo ""
-  echo "For Firefox, please enter the extension ID from about:debugging"
-  echo "(It looks like: {12345678-1234-1234-1234-123456789abc})"
-  read -p "Firefox Extension ID (or press Enter to skip): " FIREFOX_ID
+  echo "Installing manifests for detected browsers..."
+
+  # Chrome
+  if [ -d "$HOME/.config/google-chrome" ]; then
+    create_manifest "$HOME/.config/google-chrome/NativeMessagingHosts" "Chrome"
+  fi
+
+  # Brave
+  if [ -d "$HOME/.config/BraveSoftware/Brave-Browser" ]; then
+    create_manifest "$HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts" "Brave"
+  fi
+
+  # Edge
+  if [ -d "$HOME/.config/microsoft-edge" ]; then
+    create_manifest "$HOME/.config/microsoft-edge/NativeMessagingHosts" "Edge"
+  fi
+
+  # Chromium
+  if [ -d "$HOME/.config/chromium" ]; then
+    create_manifest "$HOME/.config/chromium/NativeMessagingHosts" "Chromium"
+  fi
+
+elif [ "$BROWSER_SELECT" == "2" ]; then
+  # Firefox Flow
+  echo ""
+  echo "--- Firefox Setup ---"
   
-  if [ ! -z "$FIREFOX_ID" ]; then
+  if [ -d "$HOME/.mozilla" ]; then
+    FIREFOX_MANIFEST_DIR="$HOME/.mozilla/native-messaging-hosts"
+    mkdir -p "$FIREFOX_MANIFEST_DIR"
+    
+    # Use the fixed ID from manifest.json
+    FIREFOX_ID="passkey-wallet@passkey-wallet.com"
+    
     cat > "$FIREFOX_MANIFEST_DIR/com.passkey_wallet.native.json" << EOF
 {
   "name": "com.passkey_wallet.native",
@@ -138,8 +148,18 @@ if [ -d "$HOME/.mozilla" ]; then
   ]
 }
 EOF
-    echo "  ✓ Firefox"
+    echo "  ✓ Firefox manifest installed for ID: $FIREFOX_ID"
+    echo ""
+    echo "Note: For Firefox, you must install the packaged extension (.xpi)."
+    echo "Run 'browser-extension/package-firefox.sh' to create it."
+  else
+    echo "Error: Firefox configuration directory not found (~/.mozilla)"
+    exit 1
   fi
+
+else
+  echo "Invalid selection."
+  exit 1
 fi
 
 echo ""
@@ -150,6 +170,6 @@ echo "  Node.js: $NODE_PATH ($NODE_VERSION)"
 echo "  Native host: $INSTALL_PATH"
 echo ""
 echo "Next steps:"
-echo "1. Reload all extensions in their respective browsers"
-echo "2. Extension errors should disappear"
+echo "1. Ensure the extension is installed in your browser"
+echo "2. Reload the extension"
 echo ""

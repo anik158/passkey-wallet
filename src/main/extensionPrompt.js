@@ -19,7 +19,7 @@ export async function promptExtensionInstall() {
 
     extensionPromptWindow = new BrowserWindow({
         width: 550,
-        height: 480,
+        height: 580,
         frame: false,
         resizable: false,
         center: true,

@@ -190,6 +190,32 @@
             color: var(--text-muted);
             cursor: pointer;
         }
+
+        .browser-tabs {
+            display: flex;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-main);
+        }
+
+        .tab.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+            font-weight: 500;
+        }
     </style>
 </head>
 
@@ -208,14 +234,24 @@
         <h2>Browser Extension Setup</h2>
         <p class="subtitle">PassKey Wallet works best with the browser extension</p>
 
-        <div class="description">
-            <p><strong>For Chrome/Edge/Brave:</strong></p>
+        <div class="browser-tabs">
+            <div class="tab active" data-tab="chromium">Chromium</div>
+            <div class="tab" data-tab="firefox">Firefox</div>
+        </div>
+
+        <div class="description" id="desc-chromium">
+            <p><strong>For Chrome, Edge, Brave, etc:</strong></p>
             <p>1. Go to browser extensions page → Enable "Developer mode" → "Load unpacked"</p>
             <p>2. Select the extension folder we'll open for you</p>
-            <p>3. Copy extension ID and run the installer script</p>
-            <p style="margin-top: 12px;"><strong>For Firefox:</strong></p>
-            <p>Run package-firefox script in the extension folder, then install the .xpi file</p>
-            <p style="margin-top: 12px; font-size: 0.85rem; opacity: 0.8">See Help menu for detailed instructions.</p>
+            <p>3. Copy extension ID and run the <code>install-native-host</code> script (Select Option 1)</p>
+        </div>
+
+        <div class="description" id="desc-firefox" style="display: none;">
+            <p><strong>For Firefox:</strong></p>
+            <p>1. Run <code>package-firefox</code> script in the extension folder</p>
+            <p>2. Go to <code>about:addons</code> → Gear icon → "Install Add-on From File"</p>
+            <p>3. Select the generated <code>passkey-wallet-firefox.xpi</code></p>
+            <p>4. Run the <code>install-native-host</code> script (Select Option 2)</p>
         </div>
 
         <div class="button-group">
@@ -231,6 +267,29 @@
 
     <script>
         const { ipcRenderer } = require('electron');
+
+        // Tab Switching Logic
+        const tabs = document.querySelectorAll('.tab');
+        const descChromium = document.getElementById('desc-chromium');
+        const descFirefox = document.getElementById('desc-firefox');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all
+                tabs.forEach(t => t.classList.remove('active'));
+                // Add active to clicked
+                tab.classList.add('active');
+
+                // Show/Hide content
+                if (tab.dataset.tab === 'chromium') {
+                    descChromium.style.display = 'block';
+                    descFirefox.style.display = 'none';
+                } else {
+                    descChromium.style.display = 'none';
+                    descFirefox.style.display = 'block';
+                }
+            });
+        });
 
         document.getElementById('install-btn').addEventListener('click', () => {
             const dontShowAgain = document.getElementById('dont-show-again').checked;
