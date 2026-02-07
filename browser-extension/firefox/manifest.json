@@ -28,7 +28,13 @@
     },
     "browser_specific_settings": {
         "gecko": {
-            "id": "passkey-wallet@passkey-wallet.com"
+            "id": "passkey-wallet@passkey-wallet.com",
+            "data_collection_permissions": {
+                "required": [
+                    "none"
+                ],
+                "optional": []
+            }
         }
     }
 }
