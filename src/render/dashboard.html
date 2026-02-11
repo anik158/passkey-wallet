@@ -28,6 +28,7 @@
             <button id="btnBackup" title="Export secure backup">Backup .qpass</button>
             <button id="btnRestore" title="Restore from secure backup">Restore .qpass</button>
             <button id="btnSettings" title="App Settings">Settings</button>
+            <button id="btnSetupBrowser" title="Setup Browser Extension">🧩 Setup Browser</button>
             <button id="btnLock" class="btn-danger" title="Lock App Now">Lock 🔒</button>
             <button id="btnHelp" title="User Check Manual">Help ❓</button>
             <button id="btnDeleteAll" class="btn-danger" title="Delete all credentials from vault">Delete All</button>
@@ -142,53 +143,58 @@
                         intended.</li>
                 </ul>
 
+
                 <h3>🌐 Browser Extension Setup</h3>
-                <ul>
-                    <li><b>Step 1:</b> <b>Open Extension Folder</b>
-                        <small style="color: var(--text-muted); display: block; margin-bottom: 8px;">
-                            <ul style="margin-top: 5px; font-size: 0.8rem; padding-left: 20px;">
-                                <li>Linux:
-                                    <code>/opt/PassKey Wallet/resources/app.asar.unpacked/browser-extension</code>
-                                </li>
-                                <li>Windows:
-                                    <code>C:\Program Files\PassKey Wallet\resources\app.asar.unpacked\browser-extension</code>
-                                </li>
-                                <li>macOS:
-                                    <code>/Applications/PassKey Wallet.app/Contents/Resources/app.asar.unpacked/browser-extension</code>
-                                </li>
-                            </ul>
-                        </small>
-                    </li>
+                <p><strong>✅ Native host is auto-configured on first run!</strong></p>
 
-                    <li style="margin-bottom: 10px;"><b>Step 2: Install Extension</b>
-                        <ul style="margin-top: 5px; list-style-type: circle; padding-left: 20px;">
-                            <li style="margin-bottom: 8px;">
-                                <strong>Chromium (Chrome/Edge/Brave):</strong><br>
-                                1. Go to <code>chrome://extensions</code><br>
-                                2. Enable <b>Developer mode</b> (top-right)<br>
-                                3. Click <b>Load unpacked</b> -> Select extension folder<br>
-                                4. <b>Copy the Extension ID</b> (needed for Step 3)
-                            </li>
-                            <li>
-                                <strong>Firefox:</strong><br>
-                                1. Run packaging script:<br>
-                                &nbsp;&nbsp;&nbsp;&nbsp;- Linux/macOS: <code>package-firefox.sh</code><br>
-                                &nbsp;&nbsp;&nbsp;&nbsp;- Windows: <code>package-firefox.bat</code><br>
-                                2. Go to <code>about:addons</code> -> Gear icon -> Install From File<br>
-                                3. Select <code>passkey-wallet-firefox.xpi</code><br>
-                                <em style="color: var(--text-muted); font-size: 0.85em;">(Note: Requires signed
-                                    extension or Dev Edition)</em>
-                            </li>
-                        </ul>
-                    </li>
+                <p><strong>Quick Setup (2 steps):</strong></p>
+                <ol>
+                    <li><strong>Click "🧩 Setup Browser" button</strong> in the toolbar above</li>
+                    <li><strong>Follow the wizard</strong> - it will guide you through loading the extension in your
+                        browser</li>
+                </ol>
 
-                    <li><b>Step 3:</b> Run the native host installer:
-                        <ul style="margin-top: 5px; list-style-type: circle; padding-left: 20px;">
-                            <li>Linux/macOS: <code>install-native-host.sh</code></li>
-                            <li>Windows: <code>install-native-host.bat</code></li>
-                        </ul>
-                    </li>
-                </ul>
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border);">
+
+                <details>
+                    <summary style="cursor: pointer; font-weight: bold;">📋 Manual Setup (Advanced)</summary>
+                    <p style="margin-top: 10px;">If the wizard doesn't work, you can install manually:</p>
+
+                    <p><strong>Extension Folder Location:</strong></p>
+                    <ul style="font-size: 0.9rem; color: var(--text-muted);">
+                        <li>Linux: <code>/opt/PassKey Wallet/resources/app.asar.unpacked/browser-extension</code></li>
+                        <li>Windows:
+                            <code>C:\Program Files\PassKey Wallet\resources\app.asar.unpacked\browser-extension</code>
+                        </li>
+                        <li>macOS:
+                            <code>/Applications/PassKey Wallet.app/Contents/Resources/app.asar.unpacked/browser-extension</code>
+                        </li>
+                    </ul>
+
+                    <p><strong>For Chromium (Chrome/Edge/Brave):</strong></p>
+                    <ol>
+                        <li>Go to <code>chrome://extensions</code> (or <code>edge://extensions</code>,
+                            <code>brave://extensions</code>)</li>
+                        <li>Enable <b>Developer mode</b> (top-right toggle)</li>
+                        <li>Click <b>Load unpacked</b></li>
+                        <li>Navigate to extension folder → Select <code>chromium</code> subfolder</li>
+                        <li>Extension ID should be: <code>tygqvasnoghptkmhusdzktfyboigejxl</code></li>
+                    </ol>
+
+                    <p><strong>For Firefox:</strong></p>
+                    <ol>
+                        <li>Go to <code>about:debugging#/runtime/this-firefox</code></li>
+                        <li>Click <b>Load Temporary Add-on...</b></li>
+                        <li>Navigate to extension folder → <code>firefox</code> subfolder → Select
+                            <code>manifest.json</code></li>
+                    </ol>
+
+                    <p style="margin-top: 10px;"><em style="color: var(--text-muted); font-size: 0.9em;">Note: Native
+                            host should already be configured automatically. If you need to reconfigure, run
+                            <code>install-native-host.bat</code> (Windows) or <code>install-native-host.sh</code>
+                            (Linux/macOS) from the extension folder.</em></p>
+                </details>
+
 
                 <h3>💡 Recommendation</h3>
                 <ul>

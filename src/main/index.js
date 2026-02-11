@@ -25,6 +25,7 @@ import { getExtensionPath } from './extensionSetup.js'
 import { promptExtensionInstall } from './extensionPrompt.js'
 import { startURLServer, stopURLServer, getCurrentURL } from './urlServer.js'
 import Store from 'electron-store';
+import { autoInstallNativeHost } from '../browser-extension/auto-install-native-host.js';
 
 const store = new Store();
 
@@ -154,6 +155,7 @@ async function getCurrentDomain() {
 let overlayWindow = null
 let dashboardWindow = null
 let loginWindow = null
+let browserSetupWindow = null
 let tray = null
 
 function createOverlayWindow() {
@@ -468,6 +470,33 @@ function startApp() {
 }
 
 app.whenReady().then(async () => {
+  const isFirstRun = !store.get('nativeHostConfigured');
+
+  if (isFirstRun) {
+    console.log('[First Run] Detected first run, auto-installing native host...');
+    try {
+      const results = await autoInstallNativeHost();
+      store.set('nativeHostConfigured', true);
+      store.set('installedBrowsers', results.success);
+      store.set('defaultBrowser', results.defaultBrowser);
+
+      console.log('[First Run] Auto-installation complete!');
+      console.log('[First Run] Installed for:', results.success);
+
+      if (results.success.length > 0) {
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'Setup Complete',
+          message: 'Browser Extension Setup',
+          detail: `Native host configured for: ${results.success.join(', ')}\n\nNext step: Load the PassKey Wallet extension in your browser.\n\nExtension folder: ${getExtensionPath()}`
+        });
+      }
+    } catch (error) {
+      console.error('[First Run] Auto-installation failed:', error);
+      store.set('nativeHostConfigured', false);
+    }
+  }
+
   createLoginWindow()
 
   // Start URL server for browser extension communication
@@ -795,3 +824,119 @@ ipcMain.handle('lock-app', () => {
 ipcMain.on('reset-activity', () => {
   resetActivityTimer();
 });
+
+ipcMain.handle('get-extension-path', () => {
+  const extensionPath = getExtensionPath();
+  return {
+    chromium: path.join(extensionPath, 'chromium'),
+    firefox: path.join(extensionPath, 'firefox')
+  };
+});
+
+ipcMain.handle('detect-extension-id', async (event, browser) => {
+  const extensionPath = getExtensionPath();
+  const chromiumPath = path.join(extensionPath, 'chromium');
+
+  try {
+    const manifestPath = path.join(chromiumPath, 'manifest.json');
+    if (fs.existsSync(manifestPath)) {
+      const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestContent);
+
+      const id = await generateExtensionId(chromiumPath);
+      return id;
+    }
+  } catch (error) {
+    console.error('Failed to detect extension ID:', error);
+  }
+
+  return null;
+});
+
+ipcMain.handle('run-native-host-installer', async (event, { browser, extensionId }) => {
+  const { spawn } = await import('child_process');
+  const extensionPath = getExtensionPath();
+
+  return new Promise((resolve) => {
+    let scriptPath, scriptArgs;
+
+    if (process.platform === 'win32') {
+      scriptPath = path.join(extensionPath, 'install-native-host.bat');
+      scriptArgs = [];
+    } else {
+      scriptPath = path.join(extensionPath, 'install-native-host.sh');
+      scriptArgs = [];
+    }
+
+    const child = spawn(scriptPath, scriptArgs, {
+      cwd: extensionPath,
+      stdio: 'inherit',
+      shell: true
+    });
+
+    child.on('close', (code) => {
+      resolve({ success: code === 0 });
+    });
+
+    child.on('error', (error) => {
+      console.error('Installer error:', error);
+      resolve({ success: false, error: error.message });
+    });
+  });
+});
+
+ipcMain.on('close-browser-setup', () => {
+  if (browserSetupWindow) {
+    browserSetupWindow.close();
+    browserSetupWindow = null;
+  }
+});
+
+ipcMain.on('open-browser-setup', () => {
+  createBrowserSetupWindow();
+});
+
+async function generateExtensionId(extensionPath) {
+  const crypto = await import('crypto');
+  const manifestPath = path.join(extensionPath, 'manifest.json');
+  const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+  const hash = crypto.createHash('sha256').update(manifestContent).digest('hex');
+
+  let id = '';
+  for (let i = 0; i < 32; i++) {
+    id += String.fromCharCode(97 + (parseInt(hash[i], 16) % 26));
+  }
+  return id;
+}
+
+function createBrowserSetupWindow() {
+  if (browserSetupWindow) {
+    browserSetupWindow.focus();
+    return;
+  }
+
+  browserSetupWindow = new BrowserWindow({
+    width: 800,
+    height: 700,
+    title: 'Browser Extension Setup',
+    icon: getIconPath(),
+    resizable: false,
+    webPreferences: {
+      preload: PRELOAD_PATH,
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  browserSetupWindow.on('closed', () => {
+    browserSetupWindow = null;
+  });
+
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  if (devServerUrl && !app.isPackaged) {
+    browserSetupWindow.loadURL(`${devServerUrl}src/render/browser-setup.html`);
+  } else {
+    browserSetupWindow.loadFile(`${__dirname}/../dist/src/render/browser-setup.html`);
+  }
+}

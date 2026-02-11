@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Extension Setup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .wizard-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 700px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .wizard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .wizard-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .wizard-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .wizard-content {
+            padding: 30px;
+        }
+
+        .step {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .step-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .browser-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .browser-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .browser-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .browser-card.selected {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .browser-card .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .browser-card .name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box.success {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .info-box.warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .status-icon {
+            font-size: 24px;
+            margin-right: 12px;
+        }
+
+        .status-text {
+            flex: 1;
+        }
+
+        .status-text .label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-text .detail {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            justify-content: flex-end;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        button.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        button.secondary:hover {
+            background: #d0d0d0;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .extension-id-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 15px 0;
+            word-break: break-all;
+        }
+
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .action-button:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wizard-container">
+        <div class="wizard-header">
+            <h1>🧩 Browser Extension Setup</h1>
+            <p>Let's connect your browser to PassKey Wallet</p>
+        </div>
+
+        <div class="wizard-content">
+            <!-- Step 1: Select Browser -->
+            <div class="step active" id="step1">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Select Your Browser</div>
+                </div>
+                <p class="step-description">
+                    Choose the browser you want to use with PassKey Wallet.
+                </p>
+
+                <div class="browser-grid">
+                    <div class="browser-card" data-browser="chrome">
+                        <div class="icon">🌐</div>
+                        <div class="name">Chrome</div>
+                    </div>
+                    <div class="browser-card" data-browser="edge">
+                        <div class="icon">🔷</div>
+                        <div class="name">Edge</div>
+                    </div>
+                    <div class="browser-card" data-browser="brave">
+                        <div class="icon">🦁</div>
+                        <div class="name">Brave</div>
+                    </div>
+                    <div class="browser-card" data-browser="firefox">
+                        <div class="icon">🦊</div>
+                        <div class="name">Firefox</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="primary" id="btnStep1Next" disabled>Next</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Install Extension -->
+            <div class="step" id="step2">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Install Browser Extension</div>
+                </div>
+
+                <div id="chromiumInstructions">
+                    <p class="step-description">
+                        Follow these steps to install the extension:
+                    </p>
+
+                    <div class="info-box">
+                        <strong>Extension Folder Location:</strong><br>
+                        <div class="extension-id-display" id="extensionPath"></div>
+                    </div>
+
+                    <button class="action-button" id="btnCopyPath">
+                        📋 Copy Path
+                    </button>
+                    <button class="action-button" id="btnOpenExtensionsPage">
+                        🌐 Open chrome://extensions
+                    </button>
+
+                    <div class="info-box warning" style="margin-top: 20px;">
+                        <strong>Manual Steps:</strong>
+                        <ol style="margin-left: 20px; margin-top: 10px;">
+                            <li>Click "Open chrome://extensions" button above</li>
+                            <li>Enable "Developer mode" (toggle in top-right)</li>
+                            <li>Click "Load unpacked"</li>
+                            <li>Navigate to the extension folder (path shown above)</li>
+                            <li>Select the <code>chromium</code> folder</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div id="firefoxInstructions" style="display: none;">
+                    <p class="step-description">
+                        Firefox requires a packaged extension file.
+                    </p>
+
+                    <div class="info-box warning">
+                        <strong>Note:</strong> Firefox extension installation is currently limited due to Mozilla
+                        signing requirements.
+                        You can install it temporarily using Developer Edition.
+                    </div>
+
+                    <button class="action-button" id="btnOpenFirefoxAddons">
+                        🦊 Open about:debugging
+                    </button>
+
+                    <div class="info-box" style="margin-top: 20px;">
+                        <strong>Manual Steps:</strong>
+                        <ol style="margin-left: 20px; margin-top: 10px;">
+                            <li>Click "Open about:debugging" button above</li>
+                            <li>Click "This Firefox"</li>
+                            <li>Click "Load Temporary Add-on..."</li>
+                            <li>Navigate to extension folder → <code>firefox</code> subfolder</li>
+                            <li>Select <code>manifest.json</code></li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="secondary" id="btnStep2Back">Back</button>
+                    <button class="primary" id="btnStep2Next">I've Installed the Extension</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Configure Native Host -->
+            <div class="step" id="step3">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Configure Native Host</div>
+                </div>
+
+                <p class="step-description">
+                    Almost done! We need to set up the connection between the browser and PassKey Wallet.
+                </p>
+
+                <div class="info-box">
+                    The setup will automatically install the native messaging host for your browser.
+                </div>
+
+                <div id="extensionIdSection">
+                    <p><strong>Your Extension ID:</strong></p>
+                    <div class="extension-id-display" id="detectedExtensionId">Detecting...</div>
+                    <button class="action-button" id="btnCopyExtensionId">
+                        📋 Copy Extension ID
+                    </button>
+                </div>
+
+                <div class="button-group">
+                    <button class="secondary" id="btnStep3Back">Back</button>
+                    <button class="primary" id="btnRunInstaller">Run Installer</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Complete -->
+            <div class="step" id="step4">
+                <div class="step-header">
+                    <div class="step-number">✓</div>
+                    <div class="step-title">Setup Complete!</div>
+                </div>
+
+                <div class="info-box success">
+                    <strong>🎉 Success!</strong><br>
+                    Your browser is now connected to PassKey Wallet.
+                </div>
+
+                <div class="status-item">
+                    <div class="status-icon">✅</div>
+                    <div class="status-text">
+                        <div class="label">Extension Installed</div>
+                        <div class="detail" id="installedBrowserName"></div>
+                    </div>
+                </div>
+
+                <div class="status-item">
+                    <div class="status-icon">✅</div>
+                    <div class="status-text">
+                        <div class="label">Native Host Configured</div>
+                        <div class="detail">Browser can communicate with PassKey Wallet</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="primary" id="btnFinish">Finish</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/browser-setup.js"></script>
+</body>
+
+</html>

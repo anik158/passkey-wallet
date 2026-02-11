@@ -24,3 +24,8 @@ dist_app
 *.njsproj
 *.sln
 *.sw?
+
+# Private keys (NEVER commit)
+*.pem
+browser-extension/key.pem
+browser-extension/public_key.txt

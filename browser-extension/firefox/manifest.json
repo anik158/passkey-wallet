@@ -1,8 +1,8 @@
 {
     "manifest_version": 2,
-    "name": "PassKey Wallet Connector",
-    "version": "1.0.0",
-    "description": "Connects PassKey Wallet to your browser for automatic credential detection",
+    "name": "PassKey Wallet Desktop Connector",
+    "version": "1.0.1",
+    "description": "Companion extension for the PassKey Wallet desktop application. Detects login fields to autofill credentials from your local vault.",
     "permissions": [
         "activeTab",
         "tabs",

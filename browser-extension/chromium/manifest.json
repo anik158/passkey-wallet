@@ -2,7 +2,8 @@
     "manifest_version": 3,
     "name": "PassKey Wallet Connector",
     "version": "1.0.0",
-    "description": "Connects PassKey Wallet to your browser for automatic credential detection",
+    "description": "PassKey Wallet browser extension for credential autofill",
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr3QWQaKoBE05XZWNJrzwFoKdqOL6mr5j/3JNTjT8VCMDyfCljFqARWuS8Dstgn0SBNRDFXRqGSW4qd/3J0//2by1DldIj+Asj0h3x5XQ5wii+y0Cw6xv3PqzCnsNIbhiKoG903qgCD1QcZOgGWoNxJQyTDJ/+GgXAL0C5inJZYdGsmJo5QdasSL6TiORRYZKXR1qXAOkW2sglSECQogVsh57afAIBCWsbZweqVf5XZ9Em1BF/XT+QyGOufY+GpMXfzl/M89w0qMfvzrKaJFUefE22Pg1k+EGg8lbIjRPtflhfSDxhLUiXa4rcV6vPe9Npxc/2SnObyljFiaHS+BRywIDAQAB",
     "permissions": [
         "activeTab",
         "tabs",

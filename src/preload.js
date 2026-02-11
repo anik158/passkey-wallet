@@ -30,5 +30,13 @@ contextBridge.exposeInMainWorld('api', {
     saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
     lockApp: () => ipcRenderer.invoke('lock-app'),
     deleteAllCredentials: () => ipcRenderer.invoke('delete-all-credentials'),
-    resetActivity: () => ipcRenderer.send('reset-activity') // For tracking user activity
+    resetActivity: () => ipcRenderer.send('reset-activity'),
+
+    // Browser Setup
+    getExtensionPath: () => ipcRenderer.invoke('get-extension-path'),
+    detectExtensionId: (browser) => ipcRenderer.invoke('detect-extension-id', browser),
+    runNativeHostInstaller: (data) => ipcRenderer.invoke('run-native-host-installer', data),
+
+    // General IPC send
+    send: (channel, ...args) => ipcRenderer.send(channel, ...args)
 })

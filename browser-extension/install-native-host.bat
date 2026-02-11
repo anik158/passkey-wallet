@@ -6,37 +6,22 @@ echo PassKey Wallet - Native Host Installer
 echo ==============================================
 echo.
 
-REM Detect Node.js
-where node >nul 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo Error: Node.js not found in PATH!
-    echo Please install Node.js from https://nodejs.org
-    pause
-    exit /b 1
-)
-
-for /f "tokens=*" %%i in ('where node') do set NODE_PATH=%%i
-echo Found Node.js at: %NODE_PATH%
-
-for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
-echo Node version: %NODE_VERSION%
-echo.
-
 REM Set install directory
 set INSTALL_DIR=%LOCALAPPDATA%\PassKey Wallet
-set INSTALL_PATH=%INSTALL_DIR%\native-host.js
+set INSTALL_PATH=%INSTALL_DIR%\native-host.exe
 
 REM Create directory
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
-REM Copy native host with absolute Node path
-echo Creating native host wrapper...
-(
-    echo @echo off
-    echo "%NODE_PATH%" "%%~dp0native-host-impl.js" %%*
-) > "%INSTALL_DIR%\native-host.bat"
+REM Copy native host (standalone executable, no Node.js needed)
+echo Installing native host...
+copy "%~dp0dist\native-host-win.exe" "%INSTALL_PATH%" >nul
 
-copy "%~dp0native-host.js" "%INSTALL_DIR%\native-host-impl.js" >nul
+if %ERRORLEVEL% NEQ 0 (
+    echo Error: Failed to copy native host
+    pause
+    exit /b 1
+)
 
 echo Native host installed to: %INSTALL_PATH%
 echo.
@@ -72,7 +57,7 @@ if exist "%LOCALAPPDATA%\Google\Chrome" (
         echo {
         echo   "name": "com.passkey_wallet.native",
         echo   "description": "PassKey Wallet Native Messaging Host",
-        echo   "path": "%INSTALL_DIR:\=\\%\\native-host.bat",
+        echo   "path": "%INSTALL_PATH:\=\%",
         echo   "type": "stdio",
         echo   "allowed_origins": [
         echo     "chrome-extension://%EXTENSION_ID%/"
@@ -90,7 +75,7 @@ if exist "%LOCALAPPDATA%\Microsoft\Edge" (
         echo {
         echo   "name": "com.passkey_wallet.native",
         echo   "description": "PassKey Wallet Native Messaging Host",
-        echo   "path": "%INSTALL_DIR:\=\\%\\native-host.bat",
+        echo   "path": "%INSTALL_PATH:\=\%",
         echo   "type": "stdio",
         echo   "allowed_origins": [
         echo     "chrome-extension://%EXTENSION_ID%/"
@@ -108,7 +93,7 @@ if exist "%LOCALAPPDATA%\BraveSoftware" (
         echo {
         echo   "name": "com.passkey_wallet.native",
         echo   "description": "PassKey Wallet Native Messaging Host",
-        echo   "path": "%INSTALL_DIR:\=\\%\\native-host.bat",
+        echo   "path": "%INSTALL_PATH:\=\%",
         echo   "type": "stdio",
         echo   "allowed_origins": [
         echo     "chrome-extension://%EXTENSION_ID%/"
@@ -129,7 +114,7 @@ set FIREFOX_ID=passkey-wallet@passkey-wallet.com
     echo {
     echo   "name": "com.passkey_wallet.native",
     echo   "description": "PassKey Wallet Native Messaging Host",
-    echo   "path": "%INSTALL_DIR:\=\\%\\native-host.bat",
+    echo   "path": "%INSTALL_PATH:\=\%",
     echo   "type": "stdio",
     echo   "allowed_extensions": [
     echo     "%FIREFOX_ID%"

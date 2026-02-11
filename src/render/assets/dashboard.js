@@ -497,6 +497,13 @@ if (btnHelpClose) {
     }
 }
 
+const btnSetupBrowser = document.getElementById('btnSetupBrowser');
+if (btnSetupBrowser) {
+    btnSetupBrowser.onclick = () => {
+        window.api.send('open-browser-setup');
+    };
+}
+
 // Hamburger menu toggle logic (responsive)
 const btnBurger = document.getElementById('btnBurger');
 const mainActions = document.getElementById('mainActions');
