@@ -2,18 +2,20 @@
     "manifest_version": 3,
     "name": "PassKey Wallet Connector",
     "version": "1.0.0",
-    "description": "PassKey Wallet browser extension for credential autofill",
+    "description": "Sends visited website URLs to PassKey Wallet desktop app (localhost only) for credential detection. No external data collection.",
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr3QWQaKoBE05XZWNJrzwFoKdqOL6mr5j/3JNTjT8VCMDyfCljFqARWuS8Dstgn0SBNRDFXRqGSW4qd/3J0//2by1DldIj+Asj0h3x5XQ5wii+y0Cw6xv3PqzCnsNIbhiKoG903qgCD1QcZOgGWoNxJQyTDJ/+GgXAL0C5inJZYdGsmJo5QdasSL6TiORRYZKXR1qXAOkW2sglSECQogVsh57afAIBCWsbZweqVf5XZ9Em1BF/XT+QyGOufY+GpMXfzl/M89w0qMfvzrKaJFUefE22Pg1k+EGg8lbIjRPtflhfSDxhLUiXa4rcV6vPe9Npxc/2SnObyljFiaHS+BRywIDAQAB",
     "permissions": [
         "activeTab",
         "tabs",
-        "nativeMessaging"
+        "nativeMessaging",
+        "storage"
     ],
     "host_permissions": [
         "<all_urls>"
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
     "action": {
         "default_icon": {

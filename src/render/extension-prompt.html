@@ -234,26 +234,19 @@
         <h2>Browser Extension Setup</h2>
         <p class="subtitle">PassKey Wallet works best with the browser extension</p>
 
-        <div class="browser-tabs">
-            <div class="tab active" data-tab="chromium">Chromium</div>
-            <div class="tab" data-tab="firefox">Firefox</div>
+        <div class="description">
+            <p><strong>✅ Native host is auto-configured!</strong></p>
+            <p style="margin-top: 10px;">You just need to load the browser extension:</p>
+            <p style="margin-top: 10px;"><strong>For Chromium (Chrome/Edge/Brave):</strong></p>
+            <p>1. Go to <code>chrome://extensions</code> → Enable "Developer mode"</p>
+            <p>2. Click "Load unpacked" → Select the <code>chromium</code> folder</p>
+            <p>3. Extension ID will be: <code>tygqvasnoghptkmhusdzktfyboigejxl</code></p>
+
+            <p style="margin-top: 10px;"><strong>For Firefox:</strong></p>
+            <p>1. Go to <code>about:debugging#/runtime/this-firefox</code></p>
+            <p>2. Click "Load Temporary Add-on..." → Select <code>firefox/manifest.json</code></p>
         </div>
 
-        <div class="description" id="desc-chromium">
-            <p><strong>For Chrome, Edge, Brave, etc:</strong></p>
-            <p>1. Go to browser extensions page → Enable "Developer mode" → "Load unpacked"</p>
-            <p>2. Select the extension folder we'll open for you</p>
-            <p>3. Copy extension ID and run the <code>install-native-host</code> script (Select Option 1)</p>
-        </div>
-
-        <div class="description" id="desc-firefox" style="display: none;">
-            <p><strong>For Firefox:</strong></p>
-            <p>1. Run <code>package-firefox</code> script in folder</p>
-            <p>2. Go to <code>about:addons</code> → Gear icon → "Install Add-on From File"</p>
-            <p>3. Select <code>passkey-wallet-firefox.xpi</code></p>
-            <p style="font-size: 0.9em; color: #888;"><i>(Requires signed extension or Developer Edition)</i></p>
-            <p>4. Run the <code>install-native-host</code> script (Select Option 2)</p>
-        </div>
 
         <div class="button-group">
             <button id="install-btn" class="primary">Open Extension Folder</button>
@@ -268,29 +261,6 @@
 
     <script>
         const { ipcRenderer } = require('electron');
-
-        // Tab Switching Logic
-        const tabs = document.querySelectorAll('.tab');
-        const descChromium = document.getElementById('desc-chromium');
-        const descFirefox = document.getElementById('desc-firefox');
-
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                // Remove active class from all
-                tabs.forEach(t => t.classList.remove('active'));
-                // Add active to clicked
-                tab.classList.add('active');
-
-                // Show/Hide content
-                if (tab.dataset.tab === 'chromium') {
-                    descChromium.style.display = 'block';
-                    descFirefox.style.display = 'none';
-                } else {
-                    descChromium.style.display = 'none';
-                    descFirefox.style.display = 'block';
-                }
-            });
-        });
 
         document.getElementById('install-btn').addEventListener('click', () => {
             const dontShowAgain = document.getElementById('dont-show-again').checked;
