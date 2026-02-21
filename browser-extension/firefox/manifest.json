@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "PassKey Wallet Desktop Connector",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Sends visited website URLs to PassKey Wallet desktop app (localhost only) for credential detection. No external data collection.",
     "permissions": [
         "activeTab",
