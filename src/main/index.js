@@ -29,6 +29,9 @@ import { autoInstallNativeHost } from './autoInstaller.js';
 
 const store = new Store();
 
+let lastExtensionURL = null;
+let lastExtensionURLTime = 0;
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -530,9 +533,6 @@ app.whenReady().then(async () => {
   }
 
   createLoginWindow()
-
-  let lastExtensionURL = null;
-  let lastExtensionURLTime = 0;
 
   startURLServer((url) => {
     console.log('[Main] Received URL from extension:', url);

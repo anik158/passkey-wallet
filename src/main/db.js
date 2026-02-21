@@ -123,6 +123,11 @@ export function getCredentials(query) {
         return true;
       }
 
+      const queryBase = target.split('.')[0];
+      if (queryBase.length > 3 && domain.includes(queryBase)) {
+        return true;
+      }
+
 
       const tokens = target.split(/[\s\-_]+/);
       for (const token of tokens) {
