@@ -41,6 +41,7 @@
         }
     },
     "web_accessible_resources": [
-        "consent.html"
+        "consent.html",
+        "consent-page.js"
     ]
 }

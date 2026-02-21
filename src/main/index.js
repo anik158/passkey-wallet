@@ -427,45 +427,77 @@ function startApp() {
   startAutoLockTimer();
 
   globalShortcut.register('Control+Alt+P', async () => {
-    try {
-      getAllCredentials().slice(0, 1);
-    } catch (e) {
+    const isLoggedIn = dashboardWindow && !dashboardWindow.isDestroyed() && dashboardWindow.isVisible();
+
+    if (!isLoggedIn) {
       if (!loginWindow) createLoginWindow();
-      else {
-        loginWindow.show();
-        loginWindow.focus();
-      }
+      else { loginWindow.show(); loginWindow.focus(); }
       return;
     }
 
-    if (!overlayWindow) return
+    if (!overlayWindow) return;
 
-    const result = await getCurrentDomain()
+    const waitForURL = () => new Promise((resolve) => {
+      if (lastExtensionURL && Date.now() - lastExtensionURLTime < 30000) return resolve(lastExtensionURL);
+      let elapsed = 0;
+      const interval = setInterval(() => {
+        elapsed += 100;
+        const fresh = lastExtensionURL && Date.now() - lastExtensionURLTime < 30000;
+        if (fresh || elapsed >= 600) {
+          clearInterval(interval);
+          resolve(fresh ? lastExtensionURL : null);
+        }
+      }, 100);
+    });
+
+    const freshURL = await waitForURL();
+    if (freshURL) {
+      try {
+        const hostname = new URL(freshURL).hostname.replace('www.', '');
+        const creds = getCredentials(hostname);
+        console.log('[OVERLAY] URL from extension:', hostname, '→', creds.length, 'credential(s)');
+        const data = {
+          site: hostname,
+          appName: 'browser',
+          credentials: creds.map(c => ({ username: c.username, password: c.password, id: c.id }))
+        };
+        overlayWindow.webContents.send('show-credentials', data);
+        overlayWindow.center();
+        overlayWindow.show();
+        overlayWindow.focus();
+        return;
+      } catch (e) {
+        console.error('[OVERLAY] Error with URL lookup:', e.message);
+        if (String(e.message).includes('database connection is not open')) {
+          if (!loginWindow) createLoginWindow();
+          else { loginWindow.show(); loginWindow.focus(); }
+          return;
+        }
+      }
+    }
+
+    const result = await getCurrentDomain();
     if (!result || !result.domain) {
-      console.log('[OVERLAY] Could not detect active window domain')
-      return
+      console.log('[OVERLAY] Could not detect active window domain');
+      return;
     }
 
     const { domain, appName, method } = result;
     console.log('[OVERLAY] Detected domain:', domain, 'via', method, 'from', appName);
 
-    const creds = getCredentials(domain)
+    const creds = getCredentials(domain);
     console.log('[OVERLAY] Found', creds.length, 'credential(s) for', domain);
 
     const data = {
       site: domain,
       appName: appName,
-      credentials: creds.map(c => ({
-        username: c.username,
-        password: c.password,
-        id: c.id
-      }))
+      credentials: creds.map(c => ({ username: c.username, password: c.password, id: c.id }))
     };
 
-    overlayWindow.webContents.send('show-credentials', data)
-    overlayWindow.center()
-    overlayWindow.show()
-    overlayWindow.focus()
+    overlayWindow.webContents.send('show-credentials', data);
+    overlayWindow.center();
+    overlayWindow.show();
+    overlayWindow.focus();
   })
 }
 
@@ -499,9 +531,13 @@ app.whenReady().then(async () => {
 
   createLoginWindow()
 
-  // Start URL server for browser extension communication
+  let lastExtensionURL = null;
+  let lastExtensionURLTime = 0;
+
   startURLServer((url) => {
     console.log('[Main] Received URL from extension:', url);
+    lastExtensionURL = url;
+    lastExtensionURLTime = Date.now();
   });
 
   // Show extension prompt after 3 seconds (unless user dismissed it)

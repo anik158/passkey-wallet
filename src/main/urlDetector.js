@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import axios from 'axios';
+import { getCurrentURL } from './urlServer.js';
 
 /**
  * Detects browser URL using Chrome DevTools Protocol.
@@ -48,8 +49,6 @@ async function getChromeURLViaCDP() {
 }
 
 async function getLinuxBrowserURL() {
-    // Check if we have a URL from browser extension
-    const { getCurrentURL } = await import('./urlServer.js');
     const extensionURL = getCurrentURL();
 
     if (extensionURL) {
@@ -58,12 +57,9 @@ async function getLinuxBrowserURL() {
             console.log('[URL Detector] From extension:', url.hostname);
             return url.hostname.replace('www.', '');
         } catch (e) {
-            // Invalid URL, fall through
         }
     }
 
-    // Note: xdotool requires X11 and doesn't work on all systems
-    // Browser extension is the recommended approach
     console.log('[URL Detector] Linux: Use browser extension for URL detection');
     return null;
 }

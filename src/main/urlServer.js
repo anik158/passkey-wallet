@@ -8,6 +8,7 @@ const SOCKET_PATH = process.platform === 'win32'
     : path.join(os.tmpdir(), 'passkey-wallet.sock');
 
 let currentURL = null;
+let lastURLTimestamp = 0;
 let socketServer = null;
 
 /**
@@ -21,20 +22,47 @@ export function startURLServer(onURLReceived) {
 
     socketServer = net.createServer((socket) => {
         console.log('[URL Server] Client connected');
+        let buffer = '';
 
-        socket.on('data', (data) => {
+        const tryParse = (str) => {
+            const trimmed = str.trim();
+            if (!trimmed) return false;
             try {
-                const message = JSON.parse(data.toString());
-                console.log('[URL Server] Received:', message);
-
+                const message = JSON.parse(trimmed);
+                console.log('[URL Server] Received:', message.type, message.url || '');
                 if (message.type === 'browser-url' && message.url) {
                     currentURL = message.url;
-                    if (onURLReceived) {
-                        onURLReceived(message.url);
-                    }
+                    lastURLTimestamp = Date.now();
+                    if (onURLReceived) onURLReceived(message.url);
                 }
+                return true;
             } catch (e) {
-                console.error('[URL Server] Parse error:', e.message);
+                return false;
+            }
+        };
+
+        socket.on('data', (data) => {
+            const raw = data.toString();
+            console.log('[URL Server] Raw data received:', raw.slice(0, 120));
+            buffer += raw;
+
+            if (buffer.includes('\n')) {
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+                for (const line of lines) {
+                    tryParse(line);
+                }
+            } else {
+                if (tryParse(buffer)) {
+                    buffer = '';
+                }
+            }
+        });
+
+        socket.on('end', () => {
+            if (buffer.trim()) {
+                tryParse(buffer);
+                buffer = '';
             }
         });
 
@@ -69,5 +97,7 @@ export function stopURLServer() {
 }
 
 export function getCurrentURL() {
+    if (!currentURL) return null;
+    if (Date.now() - lastURLTimestamp > 30000) return null;
     return currentURL;
 }

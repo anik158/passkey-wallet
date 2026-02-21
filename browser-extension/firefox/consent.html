@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
     <title>PassKey Wallet - Data Collection Consent</title>
     <style>
         :root {
@@ -213,20 +215,7 @@
         <p class="footer-note">You can change this any time by clicking the extension icon.</p>
     </div>
 
-    <script>
-        document.getElementById('btnAllow').addEventListener('click', () => {
-            browser.storage.local.set({ dataConsent: true }).then(() => {
-                browser.runtime.sendMessage({ type: 'grant-consent' });
-                window.close();
-            });
-        });
-
-        document.getElementById('btnDeny').addEventListener('click', () => {
-            browser.storage.local.set({ dataConsent: false }).then(() => {
-                window.close();
-            });
-        });
-    </script>
+    <script src="consent-page.js"></script>
 </body>
 
 </html>

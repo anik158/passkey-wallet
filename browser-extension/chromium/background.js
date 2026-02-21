@@ -1,12 +1,15 @@
-import './consent.js';
 
 let port = null;
 let pendingUrl = null;
+let connecting = false;
 const HOST_NAME = 'com.passkey_wallet.native';
 
 function connectNative() {
+    if (port || connecting) return;
+    connecting = true;
     try {
         port = chrome.runtime.connectNative(HOST_NAME);
+        connecting = false;
 
         port.onMessage.addListener((message) => {
             console.log('[PassKey Wallet] Received:', message);
@@ -36,11 +39,6 @@ function connectNative() {
 }
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    const consent = await chrome.storage.local.get('dataConsent');
-    if (!consent.dataConsent) {
-        return;
-    }
-
     try {
         const tab = await chrome.tabs.get(activeInfo.tabId);
         sendURLToNativeApp(tab.url);
@@ -50,11 +48,6 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    const consent = await chrome.storage.local.get('dataConsent');
-    if (!consent.dataConsent) {
-        return;
-    }
-
     if (changeInfo.url && tab.active) {
         sendURLToNativeApp(changeInfo.url);
     }

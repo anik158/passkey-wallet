@@ -1,10 +1,14 @@
 let port = null;
 let pendingUrl = null;
+let connecting = false;
 const HOST_NAME = 'com.passkey_wallet.native';
 
 function connectNative() {
+    if (port || connecting) return;
+    connecting = true;
     try {
         port = browser.runtime.connectNative(HOST_NAME);
+        connecting = false;
 
         port.onMessage.addListener((message) => {
             console.log('[PassKey Wallet] Received:', message);
