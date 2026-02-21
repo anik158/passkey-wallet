@@ -1,37 +1,27 @@
-const consentKey = 'dataConsent';
+const CONSENT_KEY = 'dataConsent';
 
-chrome.runtime.onInstalled.addListener(async () => {
-    const result = await chrome.storage.local.get(consentKey);
-
-    if (!result[consentKey]) {
-        const userConsent = confirm(
-            'PassKey Wallet Desktop Connector needs to send website URLs to the PassKey Wallet desktop application on your computer.\n\n' +
-            'This data is:\n' +
-            '• Only sent to your local desktop app (localhost)\n' +
-            '• NOT sent to any external servers\n' +
-            '• Used to detect credentials for the current website\n\n' +
-            'Do you want to allow this?'
-        );
-
-        await chrome.storage.local.set({ [consentKey]: userConsent });
-
-        if (!userConsent) {
-            console.log('[PassKey Wallet] User declined data collection consent');
-        }
+browser.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+        browser.tabs.create({
+            url: browser.runtime.getURL('consent.html')
+        });
     }
 });
 
-chrome.action.onClicked.addListener(async () => {
-    const userConsent = confirm(
-        'Data Collection Settings\n\n' +
-        'PassKey Wallet sends website URLs to your local desktop application.\n\n' +
-        'Enable data collection?'
-    );
+browser.browserAction.onClicked.addListener(() => {
+    browser.storage.local.get(CONSENT_KEY).then((result) => {
+        const next = !(result[CONSENT_KEY] || false);
+        browser.storage.local.set({ [CONSENT_KEY]: next });
+        browser.browserAction.setBadgeText({ text: next ? '' : '!' });
+        browser.browserAction.setTitle({
+            title: next ? 'PassKey Wallet - Active (click to disable)' : 'PassKey Wallet - Disabled (click to enable)'
+        });
+    });
+});
 
-    await chrome.storage.local.set({ [consentKey]: userConsent });
-
-    alert(userConsent ?
-        'Data collection enabled. URLs will be sent to your desktop app.' :
-        'Data collection disabled. Extension will not send URLs.'
-    );
+browser.runtime.onMessage.addListener((message) => {
+    if (message.type === 'grant-consent') {
+        browser.storage.local.set({ [CONSENT_KEY]: true });
+        browser.browserAction.setBadgeText({ text: '' });
+    }
 });

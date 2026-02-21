@@ -25,7 +25,7 @@ import { getExtensionPath } from './extensionSetup.js'
 import { promptExtensionInstall } from './extensionPrompt.js'
 import { startURLServer, stopURLServer, getCurrentURL } from './urlServer.js'
 import Store from 'electron-store';
-import { autoInstallNativeHost } from '../browser-extension/auto-install-native-host.js';
+import { autoInstallNativeHost } from './autoInstaller.js';
 
 const store = new Store();
 
@@ -837,52 +837,21 @@ ipcMain.handle('detect-extension-id', async (event, browser) => {
   const extensionPath = getExtensionPath();
   const chromiumPath = path.join(extensionPath, 'chromium');
 
-  try {
-    const manifestPath = path.join(chromiumPath, 'manifest.json');
-    if (fs.existsSync(manifestPath)) {
-      const manifestContent = fs.readFileSync(manifestPath, 'utf8');
-      const manifest = JSON.parse(manifestContent);
-
-      const id = await generateExtensionId(chromiumPath);
-      return id;
-    }
-  } catch (error) {
-    console.error('Failed to detect extension ID:', error);
-  }
-
-  return null;
+  return 'cnbinghihnicbcflaoaggpnpjfimpgah';
 });
 
-ipcMain.handle('run-native-host-installer', async (event, { browser, extensionId }) => {
-  const { spawn } = await import('child_process');
-  const extensionPath = getExtensionPath();
-
-  return new Promise((resolve) => {
-    let scriptPath, scriptArgs;
-
-    if (process.platform === 'win32') {
-      scriptPath = path.join(extensionPath, 'install-native-host.bat');
-      scriptArgs = [];
-    } else {
-      scriptPath = path.join(extensionPath, 'install-native-host.sh');
-      scriptArgs = [];
-    }
-
-    const child = spawn(scriptPath, scriptArgs, {
-      cwd: extensionPath,
-      stdio: 'inherit',
-      shell: true
-    });
-
-    child.on('close', (code) => {
-      resolve({ success: code === 0 });
-    });
-
-    child.on('error', (error) => {
-      console.error('Installer error:', error);
-      resolve({ success: false, error: error.message });
-    });
-  });
+ipcMain.handle('run-native-host-installer', async (event, { browser }) => {
+  try {
+    const results = await autoInstallNativeHost();
+    store.set('nativeHostConfigured', true);
+    store.set('installedBrowsers', results.success);
+    store.set('defaultBrowser', results.defaultBrowser);
+    console.log('[Installer] Results:', results);
+    return { success: results.success.length > 0, results };
+  } catch (error) {
+    console.error('[Installer] Error:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.on('close-browser-setup', () => {

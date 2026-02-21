@@ -1,9 +1,10 @@
 let port = null;
+let pendingUrl = null;
 const HOST_NAME = 'com.passkey_wallet.native';
 
 function connectNative() {
     try {
-        port = chrome.runtime.connectNative(HOST_NAME);
+        port = browser.runtime.connectNative(HOST_NAME);
 
         port.onMessage.addListener((message) => {
             console.log('[PassKey Wallet] Received:', message);
@@ -11,36 +12,41 @@ function connectNative() {
 
         port.onDisconnect.addListener(() => {
             console.log('[PassKey Wallet] Disconnected');
-            if (chrome.runtime.lastError) {
-                console.error('[PassKey Wallet] Error:', chrome.runtime.lastError.message);
+            if (browser.runtime.lastError) {
+                console.error('[PassKey Wallet] Error:', browser.runtime.lastError.message);
             }
             port = null;
             setTimeout(connectNative, 5000);
         });
 
         console.log('[PassKey Wallet] Connected to native host');
+
+        if (pendingUrl) {
+            sendURLToNativeApp(pendingUrl);
+            pendingUrl = null;
+        }
     } catch (e) {
         console.error('[PassKey Wallet] Failed to connect:', e);
         setTimeout(connectNative, 5000);
     }
 }
 
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    const consent = await chrome.storage.local.get('dataConsent');
+browser.tabs.onActivated.addListener(async (activeInfo) => {
+    const consent = await browser.storage.local.get('dataConsent');
     if (!consent.dataConsent) {
         return;
     }
 
     try {
-        const tab = await chrome.tabs.get(activeInfo.tabId);
+        const tab = await browser.tabs.get(activeInfo.tabId);
         sendURLToNativeApp(tab.url);
     } catch (e) {
         console.error('[PassKey Wallet] Error:', e);
     }
 });
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    const consent = await chrome.storage.local.get('dataConsent');
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    const consent = await browser.storage.local.get('dataConsent');
     if (!consent.dataConsent) {
         return;
     }
@@ -51,11 +57,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 function sendURLToNativeApp(url) {
-    if (!url || url.startsWith('chrome://') || url.startsWith('about:')) {
+    if (!url || url.startsWith('moz-extension://') || url.startsWith('about:') || url.startsWith('chrome://')) {
         return;
     }
 
     if (!port) {
+        pendingUrl = url;
         connectNative();
         return;
     }

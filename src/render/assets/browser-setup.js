@@ -37,15 +37,11 @@ function setupBrowserSelection() {
 
 function setupNavigationButtons() {
     document.getElementById('btnStep2Back').addEventListener('click', () => goToStep(1));
-    document.getElementById('btnStep2Next').addEventListener('click', async () => {
+    document.getElementById('btnStep2Next').addEventListener('click', () => {
+        const FIXED_ID = 'cnbinghihnicbcflaoaggpnpjfimpgah';
         if (selectedBrowser !== 'firefox') {
-            const id = await detectExtensionId();
-            if (id) {
-                extensionId = id;
-                document.getElementById('detectedExtensionId').textContent = id;
-            } else {
-                document.getElementById('detectedExtensionId').textContent = 'Unable to detect. Please ensure extension is installed.';
-            }
+            extensionId = FIXED_ID;
+            document.getElementById('detectedExtensionId').textContent = FIXED_ID;
         }
         goToStep(3);
     });
@@ -53,7 +49,11 @@ function setupNavigationButtons() {
     document.getElementById('btnStep3Back').addEventListener('click', () => goToStep(2));
 
     document.getElementById('btnRunInstaller').addEventListener('click', async () => {
+        const btn = document.getElementById('btnRunInstaller');
+        btn.disabled = true;
+        btn.textContent = '⏳ Installing...';
         await runNativeHostInstaller();
+        btn.textContent = '✅ Done';
         goToStep(4);
     });
 

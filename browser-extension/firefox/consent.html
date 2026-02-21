@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PassKey Wallet - Data Collection Consent</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --card: #16213e;
+            --accent: #06b6d4;
+            --accent2: #0891b2;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+        }
+
+        .icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1.25rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.4rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .data-box {
+            background: rgba(6, 182, 212, 0.08);
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .data-box h3 {
+            font-size: 0.85rem;
+            color: var(--accent);
+            margin-bottom: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .data-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            margin-bottom: 0.4rem;
+            font-size: 0.875rem;
+            color: var(--muted);
+        }
+
+        .data-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .data-item .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .privacy-note {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.8rem;
+            color: #fca5a5;
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-allow {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .btn-allow:hover {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+        }
+
+        .btn-deny {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--muted);
+        }
+
+        .btn-deny:hover {
+            border-color: var(--danger);
+            color: #fca5a5;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="icon">🔐</div>
+        <h1>Data Collection Consent</h1>
+        <p class="subtitle">PassKey Wallet Desktop Connector</p>
+
+        <div class="data-box">
+            <h3>What this extension collects</h3>
+            <div class="data-item">
+                <span class="dot"></span>
+                <span>Website URLs of active browser tabs</span>
+            </div>
+            <div class="data-item">
+                <span class="dot"></span>
+                <span>Only the current tab URL — no browsing history stored</span>
+            </div>
+            <div class="data-item">
+                <span class="dot"></span>
+                <span>Data is sent only to the <strong>PassKey Wallet app on your computer</strong></span>
+            </div>
+        </div>
+
+        <div class="privacy-note">
+            <span>🔒</span>
+            <span><strong>No external servers.</strong> All data stays on your device — transmitted only to localhost
+                via native messaging.</span>
+        </div>
+
+        <div class="buttons">
+            <button class="btn-allow" id="btnAllow">✅ Allow</button>
+            <button class="btn-deny" id="btnDeny">❌ Deny</button>
+        </div>
+
+        <p class="footer-note">You can change this any time by clicking the extension icon.</p>
+    </div>
+
+    <script>
+        document.getElementById('btnAllow').addEventListener('click', () => {
+            browser.storage.local.set({ dataConsent: true }).then(() => {
+                browser.runtime.sendMessage({ type: 'grant-consent' });
+                window.close();
+            });
+        });
+
+        document.getElementById('btnDeny').addEventListener('click', () => {
+            browser.storage.local.set({ dataConsent: false }).then(() => {
+                window.close();
+            });
+        });
+    </script>
+</body>
+
+</html>

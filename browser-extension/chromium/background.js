@@ -1,6 +1,7 @@
 import './consent.js';
 
 let port = null;
+let pendingUrl = null;
 const HOST_NAME = 'com.passkey_wallet.native';
 
 function connectNative() {
@@ -22,8 +23,12 @@ function connectNative() {
 
         console.log('[PassKey Wallet] Connected to native host');
 
-        // Send initial ping to keep connection alive
         port.postMessage({ type: 'ping', timestamp: Date.now() });
+
+        if (pendingUrl) {
+            sendURLToNativeApp(pendingUrl);
+            pendingUrl = null;
+        }
     } catch (e) {
         console.error('[PassKey Wallet] Failed to connect:', e);
         setTimeout(connectNative, 5000);
@@ -61,6 +66,7 @@ function sendURLToNativeApp(url) {
     }
 
     if (!port) {
+        pendingUrl = url;
         connectNative();
         return;
     }

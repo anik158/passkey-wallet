@@ -23,7 +23,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-primary);
             color: var(--text-main);
             height: 100vh;
@@ -31,19 +31,17 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            overflow: hidden;
         }
 
         .modal-content {
             background: var(--bg-secondary);
             border-radius: 12px;
-            padding: 2rem;
+            padding: 1.5rem;
             border: 1px solid var(--border-color);
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            max-width: 500px;
+            max-width: 520px;
             width: 100%;
             position: relative;
-            animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .modal-content::before {
@@ -55,111 +53,132 @@
             height: 3px;
             background: linear-gradient(90deg, #06b6d4, #0891b2);
             border-radius: 12px 12px 0 0;
-            animation: modalGlow 2s ease-in-out infinite;
-        }
-
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes modalGlow {
-
-            0%,
-            100% {
-                opacity: 0.5;
-            }
-
-            50% {
-                opacity: 1;
-            }
         }
 
         .icon-container {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 1.5rem;
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 1rem;
             background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
         }
 
         .icon-container svg {
-            width: 32px;
-            height: 32px;
+            width: 26px;
+            height: 26px;
             color: white;
         }
 
         h2 {
             text-align: center;
-            margin-bottom: 0.5rem;
-            color: var(--text-main);
-            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+            font-size: 1.3rem;
         }
 
         .subtitle {
             text-align: center;
             color: var(--text-muted);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .auto-badge {
+            text-align: center;
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+        }
+
+        .browser-tabs {
+            display: flex;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
             font-size: 0.9rem;
+        }
+
+        .tab:hover {
+            color: var(--text-main);
+        }
+
+        .tab.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+            font-weight: 500;
         }
 
         .description {
             background: var(--input-bg);
             border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
+            padding: 0.9rem;
+            margin-bottom: 1rem;
             border: 1px solid var(--border-color);
+            font-size: 0.875rem;
+            line-height: 1.6;
         }
 
         .description p {
-            font-size: 0.9rem;
-            line-height: 1.5;
+            margin-bottom: 0.3rem;
             color: var(--text-muted);
-            margin-bottom: 0.5rem;
         }
 
         .description p:last-child {
             margin-bottom: 0;
         }
 
+        .description strong {
+            color: var(--text-main);
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.82em;
+            font-family: monospace;
+        }
+
         .button-group {
             display: flex;
             gap: 10px;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         button {
             flex: 1;
-            padding: 12px 20px;
+            padding: 10px 16px;
             border-radius: 6px;
             border: 1px solid var(--border-color);
             cursor: pointer;
             font-weight: 500;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
         }
 
         button.primary {
             background: linear-gradient(135deg, #06b6d4, #0891b2);
             color: white;
             border-color: #06b6d4;
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
         }
 
         button.primary:hover {
-            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
-            transform: translateY(-2px);
+            box-shadow: 0 0 16px rgba(6, 182, 212, 0.5);
         }
 
         button.secondary {
@@ -179,42 +198,16 @@
         }
 
         .checkbox-container input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             cursor: pointer;
             accent-color: var(--accent-cyan);
         }
 
         .checkbox-container label {
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             color: var(--text-muted);
             cursor: pointer;
-        }
-
-        .browser-tabs {
-            display: flex;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            cursor: pointer;
-            color: var(--text-muted);
-            border-bottom: 2px solid transparent;
-            transition: all 0.3s ease;
-        }
-
-        .tab:hover {
-            color: var(--text-main);
-        }
-
-        .tab.active {
-            color: var(--accent-cyan);
-            border-bottom-color: var(--accent-cyan);
-            font-weight: 500;
         }
     </style>
 </head>
@@ -234,22 +227,36 @@
         <h2>Browser Extension Setup</h2>
         <p class="subtitle">PassKey Wallet works best with the browser extension</p>
 
-        <div class="description">
-            <p><strong>✅ Native host is auto-configured!</strong></p>
-            <p style="margin-top: 10px;">You just need to load the browser extension:</p>
-            <p style="margin-top: 10px;"><strong>For Chromium (Chrome/Edge/Brave):</strong></p>
-            <p>1. Go to <code>chrome://extensions</code> → Enable "Developer mode"</p>
-            <p>2. Click "Load unpacked" → Select the <code>chromium</code> folder</p>
-            <p>3. Extension ID will be: <code>tygqvasnoghptkmhusdzktfyboigejxl</code></p>
+        <div class="auto-badge">✅ Native host is auto-configured — just load the extension below</div>
 
-            <p style="margin-top: 10px;"><strong>For Firefox:</strong></p>
-            <p>1. Go to <code>about:debugging#/runtime/this-firefox</code></p>
-            <p>2. Click "Load Temporary Add-on..." → Select <code>firefox/manifest.json</code></p>
+        <div class="browser-tabs">
+            <div class="tab active" data-tab="chromium">🌐 Chrome / Edge / Brave</div>
+            <div class="tab" data-tab="firefox">🦊 Firefox</div>
         </div>
 
+        <div class="description" id="desc-chromium">
+            <p><strong>Extension ID (fixed):</strong> <code>cnbinghihnicbcflaoaggpnpjfimpgah</code></p>
+            <p style="margin-top: 0.6rem;"><strong>Steps:</strong></p>
+            <p>1. Go to <code>chrome://extensions</code> (or <code>edge://extensions</code>,
+                <code>brave://extensions</code>)
+            </p>
+            <p>2. Enable <strong>Developer mode</strong> (top-right toggle)</p>
+            <p>3. Click <strong>Load unpacked</strong></p>
+            <p>4. Click "Open Extension Folder" → select the <code>chromium</code> subfolder</p>
+            <p>5. Confirm the extension ID matches above ✅</p>
+        </div>
+
+        <div class="description" id="desc-firefox" style="display: none;">
+            <p><strong>Temporary Installation (Developer):</strong></p>
+            <p>1. Go to <code>about:debugging#/runtime/this-firefox</code></p>
+            <p>2. Click <strong>Load Temporary Add-on...</strong></p>
+            <p>3. Click "Open Extension Folder" → select <code>firefox/manifest.json</code></p>
+            <p style="margin-top: 0.6rem;"><strong>Official Install (AMO):</strong></p>
+            <p>Visit <code>addons.mozilla.org</code> → search <strong>PassKey Wallet Desktop Connector</strong></p>
+        </div>
 
         <div class="button-group">
-            <button id="install-btn" class="primary">Open Extension Folder</button>
+            <button id="install-btn" class="primary">📂 Open Extension Folder</button>
             <button id="skip-btn" class="secondary">Skip</button>
         </div>
 
@@ -261,6 +268,19 @@
 
     <script>
         const { ipcRenderer } = require('electron');
+
+        const tabs = document.querySelectorAll('.tab');
+        const descChromium = document.getElementById('desc-chromium');
+        const descFirefox = document.getElementById('desc-firefox');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                descChromium.style.display = tab.dataset.tab === 'chromium' ? 'block' : 'none';
+                descFirefox.style.display = tab.dataset.tab === 'firefox' ? 'block' : 'none';
+            });
+        });
 
         document.getElementById('install-btn').addEventListener('click', () => {
             const dontShowAgain = document.getElementById('dont-show-again').checked;
