@@ -31,6 +31,7 @@ const store = new Store();
 
 let lastExtensionURL = null;
 let lastExtensionURLTime = 0;
+let isQuitting = false;
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -85,6 +86,10 @@ if (!gotLock) {
     }
   });
 }
+
+app.on('before-quit', () => {
+  isQuitting = true;
+});
 
 app.on('will-quit', () => {
   console.log('App will quit, releasing lock...');
@@ -223,6 +228,7 @@ function createDashboardWindow() {
   })
 
   dashboardWindow.on('close', (e) => {
+    if (isQuitting) return;
     e.preventDefault();
     console.log('[DASHBOARD] Closing - hiding to system tray');
     dashboardWindow.hide();
@@ -403,6 +409,7 @@ function createTray() {
     {
       label: 'Quit',
       click: () => {
+        isQuitting = true;
         app.quit();
       }
     }

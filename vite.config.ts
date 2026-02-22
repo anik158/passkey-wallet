@@ -35,6 +35,7 @@ export default defineConfig({
         overlay: path.resolve(__dirname, 'src/render/overlay.html'),
         login: path.resolve(__dirname, 'src/render/login.html'),
         'extension-prompt': path.resolve(__dirname, 'src/render/extension-prompt.html'),
+        'browser-setup': path.resolve(__dirname, 'src/render/browser-setup.html'),
       }
     }
   }
