@@ -1,11 +1,11 @@
 import { defineConfig } from 'vite';
-import electron from 'vite-plugin-electron/simple';
+import electron from 'vite-plugin-electron';
 import path from 'path';
 
 export default defineConfig({
   plugins: [
-    electron({
-      main: {
+    electron([
+      {
         entry: 'src/main/index.js',
         vite: {
           build: {
@@ -15,7 +15,7 @@ export default defineConfig({
                 'active-win',
                 'argon2',
                 'electron-store',
-                'mock-aws-s3', // Just in case
+                'mock-aws-s3',
                 'aws-sdk',
                 'nock'
               ]
@@ -23,10 +23,15 @@ export default defineConfig({
           }
         }
       },
-      preload: {
-        input: 'src/preload.js',
+      {
+        entry: 'src/preload.js',
+        onstart(options) { options.reload(); }
       },
-    }),
+      {
+        entry: 'src/preload-extension.js',
+        onstart(options) { options.reload(); }
+      },
+    ]),
   ],
   build: {
     rollupOptions: {
@@ -35,7 +40,6 @@ export default defineConfig({
         overlay: path.resolve(__dirname, 'src/render/overlay.html'),
         login: path.resolve(__dirname, 'src/render/login.html'),
         'extension-prompt': path.resolve(__dirname, 'src/render/extension-prompt.html'),
-        'browser-setup': path.resolve(__dirname, 'src/render/browser-setup.html'),
       }
     }
   }

@@ -231,7 +231,7 @@
 
         <div class="browser-tabs">
             <div class="tab active" data-tab="chromium">🌐 Chrome / Edge / Brave</div>
-            <div class="tab" data-tab="firefox">🦊 Firefox</div>
+            <div class="tab" data-tab="firefox">🌍 Firefox</div>
         </div>
 
         <div class="description" id="desc-chromium">
@@ -266,9 +266,7 @@
         </div>
     </div>
 
-    <script>
-        const { ipcRenderer } = require('electron');
-
+    <script type="module">
         const tabs = document.querySelectorAll('.tab');
         const descChromium = document.getElementById('desc-chromium');
         const descFirefox = document.getElementById('desc-firefox');
@@ -284,12 +282,12 @@
 
         document.getElementById('install-btn').addEventListener('click', () => {
             const dontShowAgain = document.getElementById('dont-show-again').checked;
-            ipcRenderer.send('extension-prompt-response', { action: 'install', dontShowAgain });
+            window.ipc.send('extension-prompt-response', { action: 'install', dontShowAgain });
         });
 
         document.getElementById('skip-btn').addEventListener('click', () => {
             const dontShowAgain = document.getElementById('dont-show-again').checked;
-            ipcRenderer.send('extension-prompt-response', { action: 'skip', dontShowAgain });
+            window.ipc.send('extension-prompt-response', { action: 'skip', dontShowAgain });
         });
     </script>
 </body>
