@@ -32,11 +32,13 @@ export async function promptExtensionInstall() {
     });
 
     const isDev = !app.isPackaged;
-    const htmlPath = isDev
-        ? `http://localhost:5173/src/render/extension-prompt.html`
-        : `file://${path.join(__dirname, '../dist/extension-prompt.html')}`;
 
-    extensionPromptWindow.loadURL(htmlPath);
+    if (isDev) {
+        const devHtmlPath = path.join(app.getAppPath(), 'src/render/extension-prompt.html');
+        extensionPromptWindow.loadURL(`file://${devHtmlPath}`);
+    } else {
+        extensionPromptWindow.loadFile(path.join(__dirname, '../dist/extension-prompt.html'));
+    }
 
     extensionPromptWindow.on('closed', () => {
         extensionPromptWindow = null;
