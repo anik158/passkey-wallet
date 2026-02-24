@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const EXTENSION_PRELOAD_PATH = path.join(__dirname, '../dist-electron/preload-extension.js');
 
 let extensionPromptWindow = null;
 
@@ -27,16 +26,15 @@ export async function promptExtensionInstall() {
         center: true,
         alwaysOnTop: true,
         webPreferences: {
-            preload: EXTENSION_PRELOAD_PATH,
-            sandbox: true,
-            contextIsolation: true
+            nodeIntegration: true,
+            contextIsolation: false
         }
     });
 
     const isDev = !app.isPackaged;
     const htmlPath = isDev
         ? `http://localhost:5173/src/render/extension-prompt.html`
-        : `file://${path.join(__dirname, '../dist/src/render/extension-prompt.html')}`;
+        : `file://${path.join(__dirname, '../dist/extension-prompt.html')}`;
 
     extensionPromptWindow.loadURL(htmlPath);
 
