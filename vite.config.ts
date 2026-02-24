@@ -1,15 +1,19 @@
 import { defineConfig } from 'vite';
-import electron from 'vite-plugin-electron';
+import electron from 'vite-plugin-electron/simple';
 import path from 'path';
 
 export default defineConfig({
   plugins: [
-    electron([
-      {
+    electron({
+      main: {
         entry: 'src/main/index.js',
         vite: {
           build: {
             rollupOptions: {
+              input: {
+                index: 'src/main/index.js',
+                'preload-extension': 'src/preload-extension.js',
+              },
               external: [
                 'better-sqlite3-multiple-ciphers',
                 'active-win',
@@ -17,21 +21,17 @@ export default defineConfig({
                 'electron-store',
                 'mock-aws-s3',
                 'aws-sdk',
-                'nock'
+                'nock',
+                'electron'
               ]
             }
           }
         }
       },
-      {
-        entry: 'src/preload.js',
-        onstart(options) { options.reload(); }
+      preload: {
+        input: 'src/preload.js',
       },
-      {
-        entry: 'src/preload-extension.js',
-        onstart(options) { options.reload(); }
-      },
-    ]),
+    }),
   ],
   build: {
     rollupOptions: {
