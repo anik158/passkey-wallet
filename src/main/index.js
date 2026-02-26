@@ -230,21 +230,11 @@ function createDashboardWindow() {
   dashboardWindow.on('close', (e) => {
     if (isQuitting) return;
     e.preventDefault();
-    console.log('[DASHBOARD] Closing - hiding to system tray');
     dashboardWindow.hide();
     closeDatabase();
 
     if (!tray) {
       createTray();
-    }
-
-    if (!loginWindow) {
-      createLoginWindow();
-    }
-
-    if (loginWindow) {
-      loginWindow.show();
-      loginWindow.focus();
     }
   });
 
@@ -398,11 +388,15 @@ function createTray() {
     {
       label: 'Show Dashboard',
       click: () => {
-        if (!loginWindow) {
-          createLoginWindow();
+        const dashboardExists = dashboardWindow && !dashboardWindow.isDestroyed();
+        if (dashboardExists) {
+          dashboardWindow.show();
+          dashboardWindow.focus();
+        } else {
+          if (!loginWindow) createLoginWindow();
+          loginWindow.show();
+          loginWindow.focus();
         }
-        loginWindow.show();
-        loginWindow.focus();
       }
     },
     { type: 'separator' },
@@ -419,11 +413,15 @@ function createTray() {
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
-    if (!loginWindow) {
-      createLoginWindow();
+    const dashboardExists = dashboardWindow && !dashboardWindow.isDestroyed();
+    if (dashboardExists) {
+      dashboardWindow.show();
+      dashboardWindow.focus();
+    } else {
+      if (!loginWindow) createLoginWindow();
+      loginWindow.show();
+      loginWindow.focus();
     }
-    loginWindow.show();
-    loginWindow.focus();
   });
 }
 
@@ -437,9 +435,16 @@ function startApp() {
   startAutoLockTimer();
 
   globalShortcut.register('Control+Alt+P', async () => {
-    const isLoggedIn = dashboardWindow && !dashboardWindow.isDestroyed() && dashboardWindow.isVisible();
+    const dashboardExists = dashboardWindow && !dashboardWindow.isDestroyed();
+    const dashboardVisible = dashboardExists && dashboardWindow.isVisible();
 
-    if (!isLoggedIn) {
+    if (dashboardExists && !dashboardVisible) {
+      dashboardWindow.show();
+      dashboardWindow.focus();
+      return;
+    }
+
+    if (!dashboardExists) {
       if (!loginWindow) createLoginWindow();
       else { loginWindow.show(); loginWindow.focus(); }
       return;

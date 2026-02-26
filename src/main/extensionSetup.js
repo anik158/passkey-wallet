@@ -9,5 +9,5 @@ export function getExtensionPath() {
     const isDev = !app.isPackaged;
     return isDev
         ? path.join(app.getAppPath(), 'browser-extension')
-        : path.join(process.resourcesPath, 'browser-extension');
+        : path.join(process.resourcesPath, 'app.asar.unpacked', 'browser-extension');
 }
