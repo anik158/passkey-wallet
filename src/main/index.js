@@ -231,7 +231,6 @@ function createDashboardWindow() {
     if (isQuitting) return;
     e.preventDefault();
     dashboardWindow.hide();
-    closeDatabase();
 
     if (!tray) {
       createTray();
@@ -436,13 +435,6 @@ function startApp() {
 
   globalShortcut.register('Control+Alt+P', async () => {
     const dashboardExists = dashboardWindow && !dashboardWindow.isDestroyed();
-    const dashboardVisible = dashboardExists && dashboardWindow.isVisible();
-
-    if (dashboardExists && !dashboardVisible) {
-      dashboardWindow.show();
-      dashboardWindow.focus();
-      return;
-    }
 
     if (!dashboardExists) {
       if (!loginWindow) createLoginWindow();
