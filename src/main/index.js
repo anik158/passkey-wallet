@@ -140,12 +140,43 @@ async function getCurrentDomain() {
 
     if (!domain) {
       const cleanedTitle = title.replace(/(?: - | — | \| )(?:Google Chrome|Chromium|Microsoft Edge|Mozilla Firefox|Brave|Vivaldi|Opera).*/i, '')
-      const urlMatch = cleanedTitle.match(/([a-zA-Z0-9-]+\.[a-zA-Z]{2,})/i)
-      if (urlMatch?.[1]) {
-        domain = urlMatch[1].toLowerCase();
-        method = 'title-regex';
-        console.log('[DOMAIN] Detected from title regex:', domain);
-      } else {
+
+      // regex for domains including .edu.bd, .gov.uk, etc.
+      const urlMatch = cleanedTitle.match(/([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)/i)
+      if (urlMatch?.[1] && urlMatch[1].includes('.')) {
+        // Basic validation: ensure it ends with a valid-ish TLD
+        const parts = urlMatch[1].split('.');
+        if (parts[parts.length - 1].length >= 2) {
+          domain = urlMatch[1].toLowerCase();
+          method = 'title-regex';
+          console.log('[DOMAIN] Detected from title regex:', domain);
+        }
+      }
+
+      // If regex failed, try a Database Keyword match!
+      if (!domain) {
+        try {
+          const allCreds = getAllCredentials();
+          if (allCreds && allCreds.length > 0) {
+            const uniqueDomains = [...new Set(allCreds.map(c => c.domain.toLowerCase()))];
+            for (const dbDomain of uniqueDomains) {
+              // Extract the main keyword (e.g., 'github.com' -> 'github', 'mail.google.com' -> 'google')
+              let clean = dbDomain.replace(/\.(com|org|net|io|co|uk|edu|gov|bd|ir|us|info|biz|tv|me)$/gi, '');
+              const parts = clean.split('.');
+              const keyword = parts[parts.length - 1]; // get the most significant part
+
+              if (keyword && keyword.length >= 3 && cleanedTitle.toLowerCase().includes(keyword.toLowerCase())) {
+                domain = dbDomain;
+                method = 'title-db-match';
+                console.log(`[DOMAIN] Matched DB keyword '${keyword}' -> ${domain}`);
+                break;
+              }
+            }
+          }
+        } catch (e) { /* ignore DB errors here */ }
+      }
+
+      if (!domain) {
         domain = cleanedTitle.toLowerCase().trim();
         method = 'title-fallback';
         console.log('[DOMAIN] Using title as-is:', domain);
@@ -169,7 +200,7 @@ let tray = null
 function createOverlayWindow() {
   overlayWindow = new BrowserWindow({
     width: 440,
-    height: 260, // Increased height to fit app name and content
+    height: 260,
     show: false,
     frame: false,
     transparent: true,
