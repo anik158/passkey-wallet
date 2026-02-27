@@ -2,6 +2,14 @@
 
 A secure, local-first password manager built with Electron. It detects the active browser tab via a browser extension and shows a credential overlay with a global keyboard shortcut.
 
+### Screenshots
+
+[![PassKey Wallet Login](assets/screenshots/LoginScreen.png)](assets/screenshots/LoginScreen.png)
+[![PassKey Wallet Dashboard](assets/screenshots/Dashboard.png)](assets/screenshots/Dashboard.png)
+[![Browser Extension Prompt](assets/screenshots/AddCredential.png)](assets/screenshots/AddCredential.png)
+[![Browser Extension Prompt](assets/screenshots/ExtensionSetup.png)](assets/screenshots/ExtensionSetup.png)
+
+
 ---
 
 ## Features
