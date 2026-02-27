@@ -1,6 +1,6 @@
 # PassKey Wallet - Developer Guide (Part 1: The Main Process)
 
-Welcome to the PassKey Wallet developer guide! Since you wanted to learn Node.js and Electron while building this app, this guide explains exactly how the app works under the hood. 
+This guide explains the architecture of PassKey Wallet and how the application works under the hood. 
 
 In Electron, there are two distinct environments that work together:
 1. **The Main Process (Node.js)**: This is the invisible backend. It has full access to the operating system, file system, databases, and native APIs. 
@@ -79,5 +79,4 @@ This file handles the heavy cryptographic math. While SQLCipher encrypts the dat
 
 ---
 
-### What's Next?
-In Part 2, we can cover the **Renderer process (UI/Frontend)**, the **Browser Extension**, or the **Native Messaging Host**. Let me know which area you'd like to explore next!
+*(See Part 2 for documentation on the Renderer Process).*

@@ -1,6 +1,6 @@
 # PassKey Wallet - Developer Guide (Part 3: Browser Integration & Native Messaging)
 
-In Part 1 and 2, we covered the core Electron application (the backend Main Process and the frontend Renderer). However, PassKey Wallet's killer feature is its ability to instantly detect URLs and push passwords using the `Ctrl+Alt+P` hotkey.
+Parts 1 and 2 covered the core Electron application (the backend Main Process and the frontend Renderer). However, PassKey Wallet's killer feature is its ability to instantly detect URLs and push passwords using the `Ctrl+Alt+P` hotkey.
 
 To achieve this, the desktop application needs a way to communicate directly with web browsers (Chrome, Edge, Brave, Firefox). This is handled by a combination of a **Browser Extension** and a **Native Messaging Host**.
 
@@ -76,7 +76,4 @@ The browser extension lives entirely inside your web browser. Its only job is to
 
 ---
 
-### What's Next?
-We have now covered the **Main Process**, the **Renderer Process (UI)**, and the **Browser Integration**. 
-
-In Part 4, if you'd like, we can dive deep into the specific build tools, packaging (how we combine all of this into a single `.AppImage` or `.deb` file), and GitHub Actions CI/CD pipelines.
+This concludes the core architecture overview covering the **Main Process**, **Renderer Process**, and **Browser Integration**.

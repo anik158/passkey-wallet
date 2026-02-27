@@ -1,6 +1,6 @@
 # PassKey Wallet - Developer Guide (Part 2: The Renderer Process - Frontend/UI)
 
-Welcome to Part 2! In the previous guide, we looked at the Main Process (Node.js backend). Now, we'll look at the **Renderer Process**, which is responsible for the actual User Interface you see and interact with.
+This section covers the **Renderer Process**, which is responsible for the User Interface.
 
 Because Electron uses Chromium (the engine behind Google Chrome) to display the UI, the Renderer process is built exactly like a modern web application: using HTML, CSS, JavaScript, and a bundler called **Vite**.
 
@@ -83,5 +83,4 @@ To pull Part 1 and Part 2 together, here is the exact life cycle of how a user a
 
 ---
 
-### What's Next?
-In Part 3, we can cover the **Browser Extension**, or the **Native Messaging Host Installers**. Let me know!
+*(See Part 3 for documentation on Browser Integration).*
