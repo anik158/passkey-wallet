@@ -68,18 +68,6 @@ function setupActionButtons() {
         showNotification('Path copied to clipboard!');
     });
 
-    document.getElementById('btnOpenExtensionsPage').addEventListener('click', () => {
-        let url = 'chrome://extensions';
-        if (selectedBrowser === 'edge') url = 'edge://extensions';
-        else if (selectedBrowser === 'brave') url = 'brave://extensions';
-
-        window.open(url);
-    });
-
-    document.getElementById('btnOpenFirefoxAddons').addEventListener('click', () => {
-        window.open('about:debugging#/runtime/this-firefox');
-    });
-
     document.getElementById('btnCopyExtensionId').addEventListener('click', () => {
         navigator.clipboard.writeText(extensionId);
         showNotification('Extension ID copied!');

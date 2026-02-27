@@ -285,6 +285,10 @@
             color: white;
         }
 
+        .action-button.no-pointer { 
+            cursor: default; 
+        }
+
         code {
             background: rgba(0, 0, 0, 0.3);
             color: #06b6d4;
@@ -316,19 +320,19 @@
 
                 <div class="browser-grid">
                     <div class="browser-card" data-browser="chrome">
-                        <div class="icon">🌐</div>
+                        <div class="icon">🌍</div>
                         <div class="name">Chrome</div>
                     </div>
                     <div class="browser-card" data-browser="edge">
-                        <div class="icon">🔷</div>
+                        <div class="icon">🌍</div>
                         <div class="name">Edge</div>
                     </div>
                     <div class="browser-card" data-browser="brave">
-                        <div class="icon">🦁</div>
+                        <div class="icon">🌍</div>
                         <div class="name">Brave</div>
                     </div>
                     <div class="browser-card" data-browser="firefox">
-                        <div class="icon">🦊</div>
+                        <div class="icon">🌍</div>
                         <div class="name">Firefox</div>
                     </div>
                 </div>
@@ -358,14 +362,15 @@
                     <button class="action-button" id="btnCopyPath">
                         📋 Copy Path
                     </button>
-                    <button class="action-button" id="btnOpenExtensionsPage">
-                        🌐 Open chrome://extensions
-                    </button>
+
+                    <div class="action-button no-pointer">
+                        🌍 Open 'browser'://extensions
+                    </div>
 
                     <div class="info-box warning" style="margin-top: 20px;">
                         <strong>Manual Steps:</strong>
                         <ol style="margin-left: 20px; margin-top: 10px;">
-                            <li>Click "Open chrome://extensions" button above</li>
+                            <li>"Open 'browser'://extensions" in Chromimum Browsers</li>
                             <li>Enable "Developer mode" (toggle in top-right)</li>
                             <li>Click "Load unpacked"</li>
                             <li>Navigate to the extension folder (path shown above)</li>
@@ -385,14 +390,14 @@
                         You can install it temporarily using Developer Edition.
                     </div>
 
-                    <button class="action-button" id="btnOpenFirefoxAddons">
-                        🦊 Open about:debugging
-                    </button>
+                    <div class="action-button no-pointer">
+                        🌍 Open about:debugging
+                    </div>
 
                     <div class="info-box" style="margin-top: 20px;">
                         <strong>Manual Steps:</strong>
                         <ol style="margin-left: 20px; margin-top: 10px;">
-                            <li>Click "Open about:debugging" button above</li>
+                            <li>"Open about:debugging" in Firefox</li>
                             <li>Click "This Firefox"</li>
                             <li>Click "Load Temporary Add-on..."</li>
                             <li>Navigate to extension folder → <code>firefox</code> subfolder</li>
