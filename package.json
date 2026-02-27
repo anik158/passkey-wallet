@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run build:native-host && vite build && electron-builder",
-    "build:native-host": "pkg browser-extension/native-host.js --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --output browser-extension/dist/native-host",
+    "build:native-host": "node scripts/build-native-host.js",
     "preview": "vite preview",
     "load-extension": "node scripts/load-extension.js"
   },
