@@ -43,6 +43,14 @@ jobs:
             dist_app/*.deb
           retention-days: 30
       
+      - name: Release Linux to GitHub
+        if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist_app/*.AppImage
+            dist_app/*.deb
+      
       - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
@@ -51,6 +59,13 @@ jobs:
           path: |
             dist_app/*.exe
           retention-days: 30
+      
+      - name: Release Windows to GitHub
+        if: matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist_app/*.exe
       
       - name: Upload macOS artifacts
         if: matrix.os == 'macos-latest'
@@ -61,3 +76,11 @@ jobs:
             dist_app/*.dmg
             dist_app/*.zip
           retention-days: 30
+      
+      - name: Release macOS to GitHub
+        if: matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist_app/*.dmg
+            dist_app/*.zip
