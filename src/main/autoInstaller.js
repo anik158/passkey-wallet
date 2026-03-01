@@ -58,8 +58,10 @@ async function ensureNativeHostInstalled(installDir, nativeHostPath) {
     fs.mkdirSync(installDir, { recursive: true });
 
     const { app } = await import('electron');
-    const appPath = app.getAppPath();
-    const platform = os.platform();
+    let appPath = app.getAppPath();
+    if (app.isPackaged && appPath.includes('app.asar')) {
+        appPath = appPath.replace('app.asar', 'app.asar.unpacked');
+    }
 
     const binaryName = platform === 'win32' ? 'native-host-win.exe'
         : platform === 'darwin' ? 'native-host-macos'
@@ -102,9 +104,30 @@ async function installForChromium(browser, nativeHostPath) {
         allowed_origins: [`chrome-extension://${CHROMIUM_EXTENSION_ID}/`]
     };
 
-    fs.writeFileSync(path.join(manifestDir, 'com.passkey_wallet.native.json'), JSON.stringify(manifest, null, 2));
+    const manifestPath = path.join(manifestDir, 'com.passkey_wallet.native.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     console.log(`[Auto-Installer] Manifest installed for ${browser}`);
+
+    if (os.platform() === 'win32') {
+        const regPath = getChromiumRegistryPath(browser);
+        if (regPath) {
+            try {
+                await execAsync(`reg add "${regPath}\\com.passkey_wallet.native" /ve /t REG_SZ /d "${manifestPath}" /f`);
+                console.log(`[Auto-Installer] Registry added for ${browser}`);
+            } catch (err) {
+                console.error(`[Auto-Installer] Failed to add registry for ${browser}:`, err.message);
+            }
+        }
+    }
+
     return true;
+}
+
+function getChromiumRegistryPath(browser) {
+    if (browser === 'chrome') return 'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts';
+    if (browser === 'edge') return 'HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts';
+    if (browser === 'brave') return 'HKCU\\Software\\BraveSoftware\\Brave-Browser\\NativeMessagingHosts';
+    return null;
 }
 
 async function installForFirefox(nativeHostPath) {
