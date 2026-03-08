@@ -23,7 +23,12 @@ export async function autoInstallNativeHost() {
     const installDir = getNativeHostInstallDir();
     const nativeHostPath = getNativeHostExecutablePath(installDir);
 
-    await ensureNativeHostInstalled(installDir, nativeHostPath);
+    try {
+        await ensureNativeHostInstalled(installDir, nativeHostPath);
+    } catch (err) {
+        console.error('[Auto-Installer] CRITICAL ERROR during host file copy:', err.message);
+        // Continue anyway; maybe the file already exists from a previous install
+    }
 
     const browsersToInstall = defaultBrowser !== 'unknown' && installedBrowsers.includes(defaultBrowser)
         ? [defaultBrowser, ...installedBrowsers.filter(b => b !== defaultBrowser)]
@@ -40,7 +45,7 @@ export async function autoInstallNativeHost() {
 
 function getNativeHostInstallDir() {
     const platform = os.platform();
-    if (platform === 'win32') return path.join(process.env.LOCALAPPDATA, 'PassKey Wallet');
+    if (platform === 'win32') return path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'PassKey Wallet');
     if (platform === 'darwin') return path.join(os.homedir(), 'Library/Application Support/PassKey Wallet');
     return path.join(os.homedir(), '.local/share/passkey-wallet');
 }
@@ -59,17 +64,30 @@ async function ensureNativeHostInstalled(installDir, nativeHostPath) {
 
     const { app } = await import('electron');
     let appPath = app.getAppPath();
-    if (app.isPackaged && appPath.includes('app.asar')) {
-        appPath = appPath.replace('app.asar', 'app.asar.unpacked');
+    let unpackedDir = appPath;
+
+    if (app.isPackaged) {
+        // In packaged Electron apps, app.getAppPath() returns the path to app.asar.
+        // We need to look inside app.asar.unpacked which sits exactly next to it.
+        unpackedDir = path.join(path.dirname(appPath), 'app.asar.unpacked');
     }
 
     const binaryName = platform === 'win32' ? 'native-host-win.exe'
         : platform === 'darwin' ? 'native-host-macos'
             : 'native-host-linux';
 
-    const sourceBinary = path.join(appPath, 'browser-extension', 'dist', binaryName);
+    const sourceBinary = path.join(unpackedDir, 'browser-extension', 'dist', binaryName);
 
     if (!fs.existsSync(sourceBinary)) {
+        console.error(`[Auto-Installer] CRITICAL: Native host binary not found at ${sourceBinary}`);
+        // Fallback for development if someone runs the installer manually
+        const devBinary = path.join(appPath, 'browser-extension', 'dist', binaryName);
+        if (fs.existsSync(devBinary)) {
+            fs.copyFileSync(devBinary, nativeHostPath);
+            if (platform !== 'win32') fs.chmodSync(nativeHostPath, 0o755);
+            console.log('[Auto-Installer] Native host installed from dev fallback:', nativeHostPath);
+            return;
+        }
         throw new Error(`Native host binary not found: ${sourceBinary}`);
     }
 
@@ -91,29 +109,30 @@ async function installForBrowser(browser, nativeHostPath) {
 }
 
 async function installForChromium(browser, nativeHostPath) {
-    const manifestDir = getChromiumManifestDir(browser);
-    if (!manifestDir) return false;
+    let manifestPath;
 
-    fs.mkdirSync(manifestDir, { recursive: true });
+    if (os.platform() === 'win32') {
+        const installDir = getNativeHostInstallDir();
+        manifestPath = path.join(installDir, `com.passkey_wallet.native_${browser}.json`);
+        fs.mkdirSync(installDir, { recursive: true });
+    } else {
+        const manifestDir = getChromiumManifestDir(browser);
+        if (!manifestDir) return false;
+        fs.mkdirSync(manifestDir, { recursive: true });
+        manifestPath = path.join(manifestDir, 'com.passkey_wallet.native.json');
+    }
 
-    const manifest = {
-        name: 'com.passkey_wallet.native',
-        description: 'PassKey Wallet Native Messaging Host',
-        path: nativeHostPath,
-        type: 'stdio',
-        allowed_origins: [`chrome-extension://${CHROMIUM_EXTENSION_ID}/`]
-    };
-
-    const manifestPath = path.join(manifestDir, 'com.passkey_wallet.native.json');
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-    console.log(`[Auto-Installer] Manifest installed for ${browser}`);
+    console.log(`[Auto-Installer] Manifest installed for ${browser} at ${manifestPath}`);
 
     if (os.platform() === 'win32') {
         const regPath = getChromiumRegistryPath(browser);
         if (regPath) {
             try {
-                await execAsync(`reg add "${regPath}\\com.passkey_wallet.native" /ve /t REG_SZ /d "${manifestPath}" /f`);
-                console.log(`[Auto-Installer] Registry added for ${browser}`);
+                // Ensure the path uses literal backslashes correctly for reg.exe command
+                const keyPath = `${regPath}\\com.passkey_wallet.native`;
+                await execAsync(`reg add "${keyPath}" /ve /t REG_SZ /d "${manifestPath.replace(/\//g, '\\')}" /f`);
+                console.log(`[Auto-Installer] Registry added for ${browser} at ${keyPath}`);
             } catch (err) {
                 console.error(`[Auto-Installer] Failed to add registry for ${browser}:`, err.message);
             }
@@ -159,12 +178,6 @@ async function installForFirefox(nativeHostPath) {
 
 function getChromiumManifestDir(browser) {
     const platform = os.platform();
-
-    if (platform === 'win32') {
-        const base = process.env.LOCALAPPDATA;
-        const dirs = { chrome: 'Google/Chrome/User Data', edge: 'Microsoft/Edge/User Data', brave: 'BraveSoftware/Brave-Browser/User Data' };
-        return dirs[browser] ? path.join(base, dirs[browser], 'NativeMessagingHosts') : null;
-    }
 
     if (platform === 'darwin') {
         const base = path.join(os.homedir(), 'Library/Application Support');
