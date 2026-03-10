@@ -9,7 +9,11 @@
   },
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "browser-extension/dist"
+  ],
+  "asarUnpack": [
+    "browser-extension/dist/*"
   ],
   "mac": {
     "target": [
