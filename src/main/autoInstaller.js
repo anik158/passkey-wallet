@@ -67,16 +67,28 @@ async function ensureNativeHostInstalled(installDir, nativeHostPath) {
     let unpackedDir = appPath;
 
     if (app.isPackaged) {
-        // In packaged Electron apps, app.getAppPath() returns the path to app.asar.
-        // We need to look inside app.asar.unpacked which sits exactly next to it.
         unpackedDir = path.join(path.dirname(appPath), 'app.asar.unpacked');
     }
+
+    // DEBUG PATH EXTRACTOR FOR WINDOWS DEPLOYMENT
+    const debugLog = [
+        `Time: ${new Date().toISOString()}`,
+        `Platform: ${platform}`,
+        `Packaged: ${app.isPackaged}`,
+        `getAppPath(): ${appPath}`,
+        `unpackedDir: ${unpackedDir}`
+    ];
 
     const binaryName = platform === 'win32' ? 'native-host-win.exe'
         : platform === 'darwin' ? 'native-host-macos'
             : 'native-host-linux';
 
     const sourceBinary = path.join(unpackedDir, 'browser-extension', 'dist', binaryName);
+    debugLog.push(`sourceBinary string: ${sourceBinary}`);
+    debugLog.push(`sourceBinary exists?: ${fs.existsSync(sourceBinary)}`);
+
+    // WRITE LOG TO LOCAL APPDATA FOLDER
+    fs.writeFileSync(path.join(installDir, 'debug-paths.log'), debugLog.join('\n'));
 
     if (!fs.existsSync(sourceBinary)) {
         console.error(`[Auto-Installer] CRITICAL: Native host binary not found at ${sourceBinary}`);
