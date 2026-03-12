@@ -62,6 +62,7 @@ async function ensureNativeHostInstalled(installDir, nativeHostPath) {
 
     fs.mkdirSync(installDir, { recursive: true });
 
+    const platform = os.platform();
     const { app } = await import('electron');
     let appPath = app.getAppPath();
     let unpackedDir = appPath;
