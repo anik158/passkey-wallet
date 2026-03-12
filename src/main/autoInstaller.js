@@ -30,9 +30,17 @@ export async function autoInstallNativeHost() {
         // Continue anyway; maybe the file already exists from a previous install
     }
 
-    const browsersToInstall = defaultBrowser !== 'unknown' && installedBrowsers.includes(defaultBrowser)
+    let browsersToInstall = defaultBrowser !== 'unknown' && installedBrowsers.includes(defaultBrowser)
         ? [defaultBrowser, ...installedBrowsers.filter(b => b !== defaultBrowser)]
         : installedBrowsers;
+
+    if (os.platform() === 'win32') {
+        // On Windows, registry paths are harmless if the browser isn't installed.
+        // Blindly register for all supported browsers to bypass detection failures
+        // caused by non-standard User Data paths or HKCU App Paths.
+        const allBrowsers = ['chrome', 'edge', 'brave', 'firefox'];
+        browsersToInstall = [...new Set([defaultBrowser, ...allBrowsers])].filter(b => b !== 'unknown');
+    }
 
     for (const browser of browsersToInstall) {
         const ok = await installForBrowser(browser, nativeHostPath);
@@ -244,6 +252,10 @@ async function getInstalledBrowsers() {
                 try { await execAsync(`where ${exe}`); browsers.push(name); } catch { }
                 try {
                     await execAsync(`reg query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${exe}"`);
+                    if (!browsers.includes(name)) browsers.push(name);
+                } catch { }
+                try {
+                    await execAsync(`reg query "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${exe}"`);
                     if (!browsers.includes(name)) browsers.push(name);
                 } catch { }
             }
