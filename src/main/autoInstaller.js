@@ -143,6 +143,14 @@ async function installForChromium(browser, nativeHostPath) {
         manifestPath = path.join(manifestDir, 'com.passkey_wallet.native.json');
     }
 
+    const manifest = {
+        name: 'com.passkey_wallet.native',
+        description: 'PassKey Wallet Native Messaging Host',
+        path: nativeHostPath,
+        type: 'stdio',
+        allowed_origins: [`chrome-extension://${CHROMIUM_EXTENSION_ID}/`]
+    };
+
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     console.log(`[Auto-Installer] Manifest installed for ${browser} at ${manifestPath}`);
 
