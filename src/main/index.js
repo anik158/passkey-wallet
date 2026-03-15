@@ -326,8 +326,13 @@ function createLoginWindow() {
     console.error('[LOGIN] Failed to load:', errorCode, errorDescription);
   });
 
-  loginWindow.on('closed', () => {
-    loginWindow = null
+  loginWindow.on('close', (event) => {
+    if (isAppLocked && !isQuitting) {
+      event.preventDefault();
+      loginWindow.hide();
+    } else {
+      loginWindow = null;
+    }
   })
 }
 
@@ -343,7 +348,8 @@ ipcMain.handle('login-attempt', async (event, password) => {
     // Attempt init. This will throw if password is wrong AND db exists/is encrypted
     initDatabase(appData, password);
 
-    // Login success!
+    isAppLocked = false;
+
     if (loginWindow) {
       loginWindow.close();
       loginWindow = null;
@@ -357,6 +363,7 @@ ipcMain.handle('login-attempt', async (event, password) => {
   }
 })
 
+let isAppLocked = false;
 const CHECK_INTERVAL_MS = 10000; // Check idle every 10s
 let autoLockInterval = null;
 let lastActivityTime = Date.now();
@@ -369,8 +376,7 @@ function startAutoLockTimer() {
   if (autoLockInterval) clearInterval(autoLockInterval);
 
   autoLockInterval = setInterval(() => {
-    // If DB is already closed/locked, no need to check
-    if (!dashboardWindow && loginWindow) return;
+    if (isAppLocked) return;
 
     const lockMinutes = store.get('autoLockMinutes', 60);
     const lockMilliseconds = lockMinutes * 60 * 1000;
@@ -384,17 +390,19 @@ function startAutoLockTimer() {
 }
 
 function lockApp() {
-  // Show Login FIRST to prevent window-all-closed from quitting app
+  isAppLocked = true;
+
   if (!loginWindow) {
     createLoginWindow();
+  } else {
+    loginWindow.show();
   }
 
-  // ensure it's ready/shown before destroying dashboard
   loginWindow.show();
   loginWindow.focus();
 
   if (dashboardWindow) {
-    dashboardWindow.destroy(); // Force close
+    dashboardWindow.destroy();
     dashboardWindow = null;
   }
 
@@ -465,6 +473,13 @@ function startApp() {
   startAutoLockTimer();
 
   globalShortcut.register('Control+Alt+P', async () => {
+    if (isAppLocked) {
+      if (!loginWindow) createLoginWindow();
+      else loginWindow.show();
+      loginWindow.focus();
+      return;
+    }
+
     const dashboardExists = dashboardWindow && !dashboardWindow.isDestroyed();
 
     if (!dashboardExists) {
